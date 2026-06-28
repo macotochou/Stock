@@ -863,6 +863,8 @@ const TECH_STOCKS=[
   {symbol:'NVDA',name:'NVIDIA Corp',sector:'Semiconductors'},
   {symbol:'AAPL',name:'Apple Inc',sector:'Consumer Tech'},
   {symbol:'GOOG',name:'Alphabet (Google)',sector:'Internet'},
+  {symbol:'SPCX',name:'Space Exploration Tech',sector:'Space Tech'},
+  {symbol:'TSLA',name:'Tesla Inc',sector:'Consumer Tech'},
   {symbol:'TSM',name:'Taiwan Semiconductor',sector:'Semiconductors'},
   {symbol:'AVGO',name:'Broadcom Inc',sector:'Semiconductors'},
   {symbol:'AMD',name:'Advanced Micro Devices',sector:'Semiconductors'},
@@ -870,33 +872,44 @@ const TECH_STOCKS=[
   {symbol:'QCOM',name:'Qualcomm Inc',sector:'Semiconductors'},
   {symbol:'ARM',name:'ARM Holdings',sector:'Semiconductors'},
   {symbol:'MRVL',name:'Marvell Technology',sector:'Semiconductors'},
+  {symbol:'NOK',name:'Nokia Corp',sector:'Networking'},
+  {symbol:'ALAB',name:'Astera Labs',sector:'Semiconductors'},
+  {symbol:'MU',name:'Micron Technology',sector:'Memory'},
+  {symbol:'SNDK',name:'Sandisk Corp',sector:'Memory'},
   {symbol:'META',name:'Meta Platforms',sector:'Internet'},
   {symbol:'AMZN',name:'Amazon.com',sector:'Cloud & E-Com'},
   {symbol:'MSFT',name:'Microsoft Corp',sector:'Cloud & Software'},
-  {symbol:'PLTR',name:'Palantir Technologies',sector:'AI & Data'},
-  {symbol:'IONQ',name:'IonQ Inc',sector:'Quantum'},
-  {symbol:'QBTS',name:'D-Wave Quantum',sector:'Quantum'},
-  {symbol:'MU',name:'Micron Technology',sector:'Memory'},
-  {symbol:'ALAB',name:'Astera Labs',sector:'Semiconductors'},
   {symbol:'CSCO',name:'Cisco Systems',sector:'Networking'},
   {symbol:'NET',name:'Cloudflare Inc',sector:'Cloud'},
-  {symbol:'NOW',name:'ServiceNow Inc',sector:'Cloud & SaaS'},
-  {symbol:'SMCI',name:'Super Micro Computer',sector:'AI Servers'},
-  {symbol:'LRCX',name:'Lam Research',sector:'Semiconductor Equip'},
-  {symbol:'AMAT',name:'Applied Materials',sector:'Semiconductor Equip'},
+  {symbol:'2454.TW',name:'MediaTek Inc',sector:'Semiconductors'},
+  {symbol:'000660.KS',name:'SK Hynix Inc',sector:'Memory'},
+  {symbol:'005930.KS',name:'Samsung Electronics',sector:'Semiconductors'},
 ];
 const WATCHLIST_STOCKS=[
-  {symbol:'MDA',name:'MDA Space Ltd',sector:'Space Tech'},
-  {symbol:'JPM',name:'JPMorgan Chase',sector:'Finance'},
-  {symbol:'V',name:'Visa Inc',sector:'Finance'},
-  {symbol:'MA',name:'Mastercard Inc',sector:'Finance'},
-  {symbol:'IBM',name:'IBM Corp',sector:'Enterprise Tech'},
-  {symbol:'AAOI',name:'Applied Optoelectronics',sector:'Optical'},
-  {symbol:'COHR',name:'Coherent Corp',sector:'Photonics'},
-  {symbol:'LITE',name:'Lumentum Holdings',sector:'Optical'},
-  {symbol:'WDAY',name:'Workday Inc',sector:'Cloud & SaaS'},
-  {symbol:'RKLB',name:'Rocket Lab USA',sector:'Space Tech'},
-  {symbol:'SOFI',name:'SoFi Technologies',sector:'Fintech'},
+  {symbol:'NVDA',name:'NVIDIA Corp',sector:'Semiconductors'},
+  {symbol:'AAPL',name:'Apple Inc',sector:'Consumer Tech'},
+  {symbol:'GOOG',name:'Alphabet (Google)',sector:'Internet'},
+  {symbol:'SPCX',name:'Space Exploration Tech',sector:'Space Tech'},
+  {symbol:'TSLA',name:'Tesla Inc',sector:'Consumer Tech'},
+  {symbol:'TSM',name:'Taiwan Semiconductor',sector:'Semiconductors'},
+  {symbol:'AVGO',name:'Broadcom Inc',sector:'Semiconductors'},
+  {symbol:'AMD',name:'Advanced Micro Devices',sector:'Semiconductors'},
+  {symbol:'INTC',name:'Intel Corp',sector:'Semiconductors'},
+  {symbol:'QCOM',name:'Qualcomm Inc',sector:'Semiconductors'},
+  {symbol:'ARM',name:'ARM Holdings',sector:'Semiconductors'},
+  {symbol:'MRVL',name:'Marvell Technology',sector:'Semiconductors'},
+  {symbol:'NOK',name:'Nokia Corp',sector:'Networking'},
+  {symbol:'ALAB',name:'Astera Labs',sector:'Semiconductors'},
+  {symbol:'MU',name:'Micron Technology',sector:'Memory'},
+  {symbol:'SNDK',name:'Sandisk Corp',sector:'Memory'},
+  {symbol:'META',name:'Meta Platforms',sector:'Internet'},
+  {symbol:'AMZN',name:'Amazon.com',sector:'Cloud & E-Com'},
+  {symbol:'MSFT',name:'Microsoft Corp',sector:'Cloud & Software'},
+  {symbol:'CSCO',name:'Cisco Systems',sector:'Networking'},
+  {symbol:'NET',name:'Cloudflare Inc',sector:'Cloud'},
+  {symbol:'2454.TW',name:'MediaTek Inc',sector:'Semiconductors'},
+  {symbol:'000660.KS',name:'SK Hynix Inc',sector:'Memory'},
+  {symbol:'005930.KS',name:'Samsung Electronics',sector:'Semiconductors'},
 ];
 const EXTENDED=[
   {symbol:'TSLA',name:'Tesla Inc',sector:'EV & Auto'},
@@ -932,21 +945,21 @@ const EXTENDED=[
 ];
 // ── Updated Jun 27 2026 prices (confirmed where available) ──
 const DP={
-  NVDA:192.53,AAPL:298.01,GOOG:338.00,TSM:432.35,AVGO:365.02,
-  AMD:521.58,INTC:128.32,QCOM:189.39,ARM:334.27,MRVL:265.48,
-  META:554.00,AMZN:244.39,MSFT:352.83,PLTR:107.27,IONQ:49.31,QBTS:32.00,
-  MU:238.00,ALAB:168.00,CSCO:82.50,NET:178.00,NOW:1520.00,SMCI:47.50,
+  NVDA:192.53,AAPL:283.78,GOOG:334.69,TSM:432.35,AVGO:365.02,
+  AMD:521.58,INTC:128.32,QCOM:189.39,ARM:334.27,MRVL:266.77,NOK:13.01,ALAB:391.74,SPCX:153.23,SNDK:2090.71,TSLA:379.71,
+  META:550.25,AMZN:232.69,MSFT:372.97,PLTR:107.27,IONQ:49.31,QBTS:32.00,
+  MU:1132.33,ALAB:168.00,CSCO:113.77,NET:237.24,NOW:1520.00,SMCI:47.50,
   LRCX:985.00,AMAT:218.00,
   MDA:28.00,JPM:298.00,V:368.00,MA:615.00,IBM:272.00,
   AAOI:46.00,COHR:122.00,LITE:97.00,WDAY:342.00,RKLB:26.50,SOFI:18.50,
   SPY:731.20,VOO:670.26,QQQ:706.27,
   '^NDX':25200,'^SOX':8350,'^DJI':44502,
-  TSLA:312.00,ORCL:190.00,CRM:345.00,ADBE:402.00,NFLX:1095.00,
+  TSLA:379.71,ORCL:190.00,CRM:345.00,ADBE:402.00,NFLX:1095.00,
   UBER:84.00,SHOP:118.00,SNOW:188.00,PANW:224.00,CRWD:395.00,
   DDOG:152.00,ZS:214.00,MSTR:535.00,COIN:272.00,DELL:148.00,
   KLAC:895.00,ASML:885.00,TXN:198.00,ON:70.00,
   GS:618.00,PYPL:80.00,PATH:18.50,AI:29.00,SOUN:14.50,
-  RIVN:11.50,XOM:120.00,WMT:100.00,COST:1005.00,PFE:28.50,ABBV:198.00,
+  RIVN:11.50,XOM:120.00,WMT:100.00,COST:1005.00,PFE:28.50,ABBV:198.00,'2454.TW':3880.00,'000660.KS':2673000,'005930.KS':339500,
 };
 // ── Analyst consensus (as of Jun 2026) ──
 const ANALYST={
@@ -1020,7 +1033,12 @@ function demoHist(sym,days){
   var sc=base/res[res.length-1].close;
   return res.map(function(x){return{date:x.date,close:+(x.close*sc).toFixed(2)};});
 }
-function demoPct(sym){
+// Real daily % changes from Jun 28 2026
+var REAL_DC={NVDA:-1.64,AAPL:3.14,GOOG:-2.19,SPCX:0.15,TSLA:1.22,TSM:-0.61,
+  AVGO:-3.67,AMD:-2.06,INTC:-3.42,QCOM:-7.57,ARM:-3.87,MRVL:-5.15,
+  NOK:-6.94,ALAB:-1.57,MU:-6.69,SNDK:-10.46,META:1.36,AMZN:2.50,
+  MSFT:5.71,CSCO:-4.37,NET:4.67,'2454.TW':-9.98,'000660.KS':-8.36,'005930.KS':-5.30};
+function demoPct(sym){if(REAL_DC[sym]!==undefined)return REAL_DC[sym];
   var h=0;for(var i=0;i<sym.length;i++) h=(h*31+sym.charCodeAt(i))&0xffffff;
   return +(((h%601)-300)/100).toFixed(2);
 }
