@@ -187,6 +187,10 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
 .mh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
 .close-x{background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer}
 .m-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.range-bar{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:8px}
+.range-btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);font-size:11px;padding:3px 8px;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit}
+.range-btn:hover{background:var(--card3,#1e2d42);color:var(--text)}
+.range-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 .ms{background:var(--bg2);border-radius:7px;padding:8px}
 .ms .ml{font-size:10px;color:var(--text3);margin-bottom:2px}.ms .mv{font-size:13px;font-weight:700}
 /* ANALYST BLOCK */
@@ -352,12 +356,16 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
     <div class="period-pills">
       <span style="font-size:12px;color:var(--text3);align-self:center;margin-right:4px">Period:</span>
       <button class="pp active" onclick="selPeriod(this,'1d')">1D</button>
-      <button class="pp" onclick="selPeriod(this,'15d')">15D</button>
+      <button class="pp" onclick="selPeriod(this,'1w')">1W</button>
       <button class="pp" onclick="selPeriod(this,'1m')">1M</button>
       <button class="pp" onclick="selPeriod(this,'3m')">3M</button>
       <button class="pp" onclick="selPeriod(this,'6m')">6M</button>
+      <button class="pp" onclick="selPeriod(this,'ytd')">YTD</button>
       <button class="pp" onclick="selPeriod(this,'1y')">1Y</button>
+      <button class="pp" onclick="selPeriod(this,'2y')">2Y</button>
       <button class="pp" onclick="selPeriod(this,'5y')">5Y</button>
+      <button class="pp" onclick="selPeriod(this,'10y')">10Y</button>
+      <button class="pp" onclick="selPeriod(this,'all')">ALL</button>
     </div>
     <div class="gainers-grid">
       <div class="lb" id="lb-pg"><div class="lb-hdr">&#129001; Top 20 Gainers</div><div class="empty">Select period</div></div>
@@ -469,6 +477,23 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
         <div class="api-row"><input id="av-key" type="password" placeholder="your_av_key" autocomplete="off"><button class="save-btn" onclick="saveKey('av')">Save</button></div>
       </div>
     </div>
+    <div class="card-panel" style="margin-bottom:12px;border:1px solid rgba(255,105,180,.25)">
+  <div style="font-size:13px;font-weight:600;margin-bottom:13px;padding-bottom:10px;border-bottom:1px solid rgba(255,105,180,.2)">&#9829; MJ Stock &mdash; Real-Time Sync</div>
+  <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Connect with your partner in real-time. Create a free project at <a href="https://console.firebase.google.com" target="_blank" style="color:#ff6fa3">firebase.google.com</a> &rarr; Realtime Database &rarr; copy the URL. Set rules to allow read/write.</p>
+  <div class="api-block">
+    <div class="at"><span style="font-size:13px;font-weight:600">Firebase Database URL</span></div>
+    <div class="api-row"><input id="fb-url-inp" type="text" placeholder="https://your-project-rtdb.firebaseio.com" style="font-size:12px" autocomplete="off"><button class="save-btn" onclick="saveFBConfig()">Connect</button></div>
+    <div style="font-size:11px;margin-top:6px" id="fb-status-lbl"><span style="color:var(--text3)">Not connected</span></div>
+  </div>
+  <div class="api-block" style="margin-top:12px">
+    <div class="at"><span style="font-size:13px;font-weight:600">I am</span></div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button id="role-her-btn" class="mj-btn" style="font-size:12px;opacity:.6" onclick="setMJRole('her')">&#128150; Her</button>
+      <button id="role-him-btn" class="mj-btn" style="font-size:12px;background:linear-gradient(135deg,#818cf8,#6366f1);opacity:.6" onclick="setMJRole('him')">&#128153; Him</button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:6px" id="role-status-lbl">Not set</div>
+  </div>
+</div>
     <div class="card-panel">
       <div style="font-size:13px;font-weight:600;margin-bottom:13px;padding-bottom:10px;border-bottom:1px solid var(--border)">&#9881; Preferences</div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0">
@@ -520,57 +545,80 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
 
 <div id="tab-mj" class="section">
   <div style="background:linear-gradient(135deg,#1a0520,#0d0118);min-height:60vh;padding:20px;max-width:900px;margin:0 auto">
-    <div style="text-align:center;margin-bottom:24px">
-      <span class="mj-heart">&#9829;</span>
-      <div style="font-size:11px;color:rgba(255,105,180,.5);letter-spacing:3px;margin-top:4px">LOVE INDEX</div>
-      <div class="mj-price" id="mj-price-display">--</div>
-      <div style="font-size:13px;color:rgba(255,105,180,.7)" id="mj-chg-display"></div>
-      <div style="margin-top:6px" id="mj-signal-display"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-      <div class="mj-card">
-        <div style="font-size:12px;color:rgba(255,105,180,.6);margin-bottom:10px">Her Love Score Today</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input class="mj-input" id="mj-her" type="number" min="0" max="100" placeholder="0-100">
-          <button class="mj-btn" onclick="mjSubmit('her')">Submit &#9829;</button>
-        </div>
-        <div style="font-size:11px;color:rgba(255,105,180,.5);margin-top:6px">Today: <span id="mj-her-val" style="color:#ff6fa3;font-weight:700">--</span></div>
+  <!-- Setup banner -->
+  <div id="mj-setup-banner" style="display:none;background:rgba(255,105,180,.08);border:1px dashed rgba(255,105,180,.3);border-radius:10px;padding:14px;text-align:center;margin-bottom:18px">
+    <div style="font-size:13px;color:rgba(255,105,180,.8);margin-bottom:8px">&#9829; Enable real-time sync with your partner</div>
+    <button class="mj-btn" style="font-size:12px" onclick="showTab('settings')">Go to Settings &rarr;</button>
+  </div>
+  <!-- Partner presence bar -->
+  <div id="mj-presence-bar" style="display:none;background:rgba(255,105,180,.06);border:1px solid rgba(255,105,180,.15);border-radius:8px;padding:8px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:12px">
+    <span id="mj-partner-dot" style="width:8px;height:8px;border-radius:50%;background:#666;display:inline-block"></span>
+    <span id="mj-partner-presence">Partner: offline</span>
+    <span style="margin-left:auto;color:rgba(255,105,180,.4);font-size:10px" id="mj-sync-status">&#9679; Synced</span>
+  </div>
+  <!-- Love Index header -->
+  <div style="text-align:center;margin-bottom:24px">
+    <span class="mj-heart">&#9829;</span>
+    <div style="font-size:11px;color:rgba(255,105,180,.5);letter-spacing:3px;margin-top:4px">LOVE INDEX</div>
+    <div class="mj-price" id="mj-price-display">--</div>
+    <div style="font-size:13px;color:rgba(255,105,180,.7)" id="mj-chg-display"></div>
+    <div style="margin-top:6px" id="mj-signal-display"></div>
+  </div>
+  <!-- Score inputs -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    <div class="mj-card" id="mj-my-card">
+      <div style="font-size:12px;color:rgba(255,105,180,.6);margin-bottom:10px" id="mj-my-label">&#128150; Her Love Score Today</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input class="mj-input" id="mj-score-input" type="number" min="0" max="100" placeholder="0-100">
+        <button class="mj-btn" onclick="mjSubmit()">Submit &#9829;</button>
       </div>
-      <div class="mj-card">
-        <div style="font-size:12px;color:rgba(192,132,252,.6);margin-bottom:10px">His Love Score Today</div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <input class="mj-input" id="mj-him" type="number" min="0" max="100" placeholder="0-100">
-          <button class="mj-btn" onclick="mjSubmit('him')">Submit &#9829;</button>
-        </div>
-        <div style="font-size:11px;color:rgba(192,132,252,.5);margin-top:6px">Today: <span id="mj-him-val" style="color:#c084fc;font-weight:700">--</span></div>
-      </div>
+      <div style="font-size:11px;color:rgba(255,105,180,.5);margin-top:6px">Today: <span id="mj-my-val" style="color:#ff6fa3;font-weight:700">--</span></div>
     </div>
-    <div class="mj-card" style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-size:13px;font-weight:700;color:rgba(255,105,180,.8)">Love Trend (30 Days)</span>
-        <span style="font-size:11px;color:rgba(255,105,180,.5)">MJ/USD</span>
-      </div>
-      <div style="background:rgba(255,105,180,.05);border-radius:10px;padding:10px" id="mj-chart"></div>
-      <div style="display:flex;gap:12px;margin-top:10px;font-size:11px">
-        <span style="color:#ff6fa3">&#9632; Her</span><span style="color:#c084fc">&#9632; Him</span><span style="color:#fbbf24">&#9632; Combined</span>
-      </div>
+    <div class="mj-card" id="mj-partner-card">
+      <div style="font-size:12px;color:rgba(192,132,252,.6);margin-bottom:10px" id="mj-partner-label">&#128153; His Love Score Today</div>
+      <div style="font-size:36px;font-weight:800;color:#c084fc;text-align:center;padding:8px 0" id="mj-partner-val">--</div>
+      <div style="font-size:11px;color:rgba(192,132,252,.4);text-align:center" id="mj-partner-time">Waiting for partner…</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
-      <div class="mj-card" style="text-align:center"><div style="font-size:11px;color:rgba(255,105,180,.5)">All-Time High</div><div style="font-size:20px;font-weight:700;color:#ff6fa3" id="mj-52h">--</div></div>
-      <div class="mj-card" style="text-align:center"><div style="font-size:11px;color:rgba(255,105,180,.5)">All-Time Low</div><div style="font-size:20px;font-weight:700;color:#c084fc" id="mj-52l">--</div></div>
-      <div class="mj-card" style="text-align:center"><div style="font-size:11px;color:rgba(255,105,180,.5)">Avg Index</div><div style="font-size:20px;font-weight:700;color:#fbbf24" id="mj-avg">--</div></div>
+  </div>
+  <!-- Trend chart -->
+  <div class="mj-card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:700;color:rgba(255,105,180,.8)">Love Trend (30 Days)</span>
+      <span style="font-size:11px;color:rgba(255,105,180,.5)">MJ/USD</span>
     </div>
-    <div class="mj-card" style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:700;color:rgba(255,105,180,.8);margin-bottom:10px">Love Trading</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-        <button class="mj-btn" onclick="mjTrade('BUY')">BUY &#9829; +10</button>
-        <button class="mj-btn" style="background:linear-gradient(135deg,#818cf8,#6366f1)" onclick="mjTrade('HOLD')">HOLD &#9829;</button>
-        <button class="mj-btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5)" onclick="mjTrade('SELL')">SELL &#9829; -10</button>
-      </div>
-      <div style="font-size:11px;color:rgba(255,105,180,.5);margin-bottom:6px">Trade Log</div>
-      <div class="mj-trade-log" id="mj-trade-log"></div>
+    <div style="background:rgba(255,105,180,.05);border-radius:10px;padding:10px" id="mj-chart"></div>
+    <div style="display:flex;gap:12px;margin-top:10px;font-size:11px">
+      <span style="color:#ff6fa3">&#9632; Her</span><span style="color:#c084fc">&#9632; Him</span><span style="color:#fbbf24">&#9632; Combined</span>
     </div>
-    <div style="text-align:center;font-size:10px;color:rgba(255,105,180,.3);padding-top:8px">&#9829; MJ Love Stock &#9829; Share this page with your partner &#9829;</div>
+  </div>
+  <!-- Stats -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+    <div class="mj-card" style="text-align:center"><div style="font-size:11px;color:rgba(255,105,180,.5)">All-Time High</div><div style="font-size:20px;font-weight:700;color:#ff6fa3" id="mj-52h">--</div></div>
+    <div class="mj-card" style="text-align:center"><div style="font-size:11px;color:rgba(255,105,180,.5)">All-Time Low</div><div style="font-size:20px;font-weight:700;color:#c084fc" id="mj-52l">--</div></div>
+    <div class="mj-card" style="text-align:center"><div style="font-size:11px;color:rgba(255,105,180,.5)">Avg Index</div><div style="font-size:20px;font-weight:700;color:#fbbf24" id="mj-avg">--</div></div>
+  </div>
+  <!-- Shared Stock Notes -->
+  <div class="mj-card" style="margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:rgba(255,105,180,.8);margin-bottom:12px">&#128172; Our Stock Notes</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <input id="mj-note-sym" class="mj-input" style="width:80px;flex:none" placeholder="NVDA" maxlength="8">
+      <input id="mj-note-text" class="mj-input" style="flex:1;min-width:120px" placeholder="What do you think? e.g. looks bullish &#128200;">
+      <button class="mj-btn" style="flex:none" onclick="mjAddNote()">Send &#9829;</button>
+    </div>
+    <div id="mj-notes-list" style="max-height:220px;overflow-y:auto"></div>
+  </div>
+  <!-- Trade log -->
+  <div class="mj-card" style="margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:rgba(255,105,180,.8);margin-bottom:10px">Love Trading</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="mj-btn" onclick="mjTrade('BUY')">BUY &#9829; +10</button>
+      <button class="mj-btn" style="background:linear-gradient(135deg,#818cf8,#6366f1)" onclick="mjTrade('HOLD')">HOLD &#9829;</button>
+      <button class="mj-btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5)" onclick="mjTrade('SELL')">SELL &#9829; -10</button>
+    </div>
+    <div style="font-size:11px;color:rgba(255,105,180,.5);margin-bottom:6px">Trade Log</div>
+    <div class="mj-trade-log" id="mj-trade-log"></div>
+  </div>
+  <div style="text-align:center;font-size:10px;color:rgba(255,105,180,.3);padding-top:8px">&#9829; MJ Love Stock &#9829; Share this page with your partner &#9829;</div>
   </div>
 </div>
 
@@ -590,7 +638,21 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
     <div class="m-stats" id="m-stats"></div>
     <div class="m-intraday" id="m-intraday" style="display:none"></div>
     <div id="analyst-block"></div>
-    <div style="height:230px;margin-bottom:12px"><canvas id="m-chart"></canvas></div>
+    <div id="m-tech-block"></div>
+    <div class="range-bar" id="m-range-bar">
+      <button class="range-btn" onclick="setModalRange('1D')">1D</button>
+      <button class="range-btn" onclick="setModalRange('1W')">1W</button>
+      <button class="range-btn" onclick="setModalRange('1M')">1M</button>
+      <button class="range-btn active" onclick="setModalRange('3M')">3M</button>
+      <button class="range-btn" onclick="setModalRange('6M')">6M</button>
+      <button class="range-btn" onclick="setModalRange('YTD')">YTD</button>
+      <button class="range-btn" onclick="setModalRange('1Y')">1Y</button>
+      <button class="range-btn" onclick="setModalRange('2Y')">2Y</button>
+      <button class="range-btn" onclick="setModalRange('5Y')">5Y</button>
+      <button class="range-btn" onclick="setModalRange('10Y')">10Y</button>
+      <button class="range-btn" onclick="setModalRange('ALL')">ALL</button>
+    </div>
+    <div style="height:230px;margin-bottom:12px;position:relative"><canvas id="m-chart"></canvas><div id="m-chart-loading" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;color:var(--text3);font-size:13px">Loading…</div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="m-tags"></div>
     <button class="btn pri" style="width:100%" onclick="prefillTrade()">Trade This Stock &rarr;</button>
   </div>
@@ -714,74 +776,319 @@ function renderAnalytics(){
 }
 // ===================== MJ LOVE STOCK =====================
 var MJ_KEY='mj_love_v1';
-function mjLoad(){try{return JSON.parse(localStorage.getItem(MJ_KEY)||'{"her":{},"him":{},"trades":[]}');}catch(e){return{her:{},him:{},trades:[]};}}
-function mjSave(d){try{localStorage.setItem(MJ_KEY,JSON.stringify(d));}catch(e){}}
-function mjSubmit(who){
-  var inp=document.getElementById('mj-'+who);
-  var val=parseInt(inp.value);
-  if(isNaN(val)||val<0||val>100){alert('Enter 0-100');return;}
-  var d=mjLoad(),today=new Date().toISOString().slice(0,10);
-  d[who][today]=val;mjSave(d);inp.value='';
-  renderMJCard();
-  document.getElementById(who==='her'?'mj-her-val':'mj-him-val').textContent=val;
-  mjRender();
+var mjEvtSource=null;
+
+// ── Firebase helpers (REST API, no SDK needed) ─────────────────
+function fbURL(){return localStorage.getItem('fb_url')||'';}
+function mjWhoAmI(){return localStorage.getItem('mj_role');}// 'her'|'him'|null
+async function fbRead(path){
+  var u=fbURL();if(!u)return null;
+  try{var r=await fetch(u+'/'+path+'.json?orderBy="$key"&limitToLast=200');return r.ok?await r.json():null;}catch(e){return null;}
 }
-function mjTrade(action){
-  var d=mjLoad(),today=new Date().toISOString().slice(0,10);
+async function fbWrite(path,data){
+  var u=fbURL();if(!u)return false;
+  try{var r=await fetch(u+'/'+path+'.json',{method:'PUT',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});return r.ok;}catch(e){return false;}
+}
+async function fbPatch(path,data){
+  var u=fbURL();if(!u)return false;
+  try{var r=await fetch(u+'/'+path+'.json',{method:'PATCH',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});return r.ok;}catch(e){return false;}
+}
+
+// ── Local fallback ─────────────────────────────────────────────
+function mjLoadLocal(){try{return JSON.parse(localStorage.getItem(MJ_KEY)||'{"scores":{"her":{},"him":{}},"trades":[],"notes":[]}')}catch(e){return{scores:{her:{},him:{}},trades:[],notes:[]};}}
+function mjSaveLocal(d){try{localStorage.setItem(MJ_KEY,JSON.stringify(d));}catch(e){}}
+
+// ── Unified load (Firebase first, localStorage fallback) ───────
+async function mjLoadData(){
+  if(!fbURL())return mjLoadLocal();
+  var remote=await fbRead('mj');
+  if(remote){
+    // merge with local if local has data firebase doesn't
+    var local=mjLoadLocal();
+    return remote;
+  }
+  return mjLoadLocal();
+}
+
+// ── Real-time listener ─────────────────────────────────────────
+function mjStartListen(){
+  var u=fbURL();if(!u||mjEvtSource)return;
+  try{
+    mjEvtSource=new EventSource(u+'/mj.json');
+    mjEvtSource.addEventListener('put',function(e){
+      try{
+        var payload=JSON.parse(e.data);
+        if(payload&&payload.data)mjRenderFromData(payload.data);
+        var sl=document.getElementById('mj-sync-status');
+        if(sl)sl.innerHTML='<span style="color:var(--green)">&#9679; Live</span>';
+      }catch(ex){}
+    });
+    mjEvtSource.onerror=function(){
+      mjEvtSource.close();mjEvtSource=null;
+      setTimeout(mjStartListen,5000);
+      var sl=document.getElementById('mj-sync-status');
+      if(sl)sl.innerHTML='<span style="color:var(--yellow)">&#9679; Reconnecting…</span>';
+    };
+  }catch(e){}
+}
+
+// ── Presence ping ──────────────────────────────────────────────
+function mjPingPresence(){
+  var who=mjWhoAmI();if(!who||!fbURL())return;
+  fbPatch('mj/presence',{[who]:{ts:Date.now(),page:'mj'}});
+}
+function mjUpdatePartnerPresence(data){
+  var who=mjWhoAmI();
+  var partnerKey=who==='her'?'him':'her';
+  var pb=document.getElementById('mj-presence-bar');
+  var dot=document.getElementById('mj-partner-dot');
+  var txt=document.getElementById('mj-partner-presence');
+  if(!pb||!dot||!txt)return;
+  pb.style.display='flex';
+  var pres=data&&data.presence&&data.presence[partnerKey];
+  if(pres&&pres.ts&&Date.now()-pres.ts<120000){
+    dot.style.background='#10b981';
+    txt.textContent=(partnerKey==='her'?'Her':'Him')+': online now';
+  } else if(pres&&pres.ts){
+    dot.style.background='#888';
+    var mins=Math.round((Date.now()-pres.ts)/60000);
+    txt.textContent=(partnerKey==='her'?'Her':'Him')+': '+mins+'m ago';
+  } else {
+    dot.style.background='#555';
+    txt.textContent='Partner: not seen yet';
+  }
+}
+
+// ── Role UI ────────────────────────────────────────────────────
+function setMJRole(role){
+  localStorage.setItem('mj_role',role);
+  mjUpdateRoleButtons();
+  mjRenderRoleUI();
+  toast('You are now set as '+(role==='her'?'Her 💖':'Him 💙'),'success');
+}
+function mjUpdateRoleButtons(){
+  var role=mjWhoAmI();
+  var hb=document.getElementById('role-her-btn');
+  var ib=document.getElementById('role-him-btn');
+  var rl=document.getElementById('role-status-lbl');
+  if(hb)hb.style.opacity=role==='her'?'1':'0.5';
+  if(ib)ib.style.opacity=role==='him'?'1':'0.5';
+  if(rl)rl.textContent=role?'You are: '+(role==='her'?'Her 💖':'Him 💙'):'Not set — choose above';
+}
+function mjRenderRoleUI(){
+  var role=mjWhoAmI();
+  var myLabel=document.getElementById('mj-my-label');
+  var partnerLabel=document.getElementById('mj-partner-label');
+  if(!role)return;
+  if(role==='her'){
+    if(myLabel)myLabel.innerHTML='&#128150; Her Love Score Today';
+    if(partnerLabel)partnerLabel.innerHTML='&#128153; His Love Score Today';
+  } else {
+    if(myLabel)myLabel.innerHTML='&#128153; His Love Score Today';
+    if(partnerLabel)partnerLabel.innerHTML='&#128150; Her Love Score Today';
+  }
+}
+
+// ── Firebase config save ───────────────────────────────────────
+function saveFBConfig(){
+  var inp=document.getElementById('fb-url-inp');
+  var url=(inp?inp.value.trim():'').replace(/\/+$/,'');
+  if(!url){toast('Enter Firebase URL','error');return;}
+  localStorage.setItem('fb_url',url);
+  if(mjEvtSource){mjEvtSource.close();mjEvtSource=null;}
+  var lbl=document.getElementById('fb-status-lbl');
+  // Test connection
+  fetch(url+'/.json').then(function(r){
+    if(r.ok){
+      if(lbl)lbl.innerHTML='<span style="color:var(--green)">&#9679; Connected</span>';
+      toast('Firebase connected!','success');
+      mjStartListen();
+    } else {
+      if(lbl)lbl.innerHTML='<span style="color:var(--red)">&#9679; Error '+r.status+'</span>';
+      toast('Connection failed — check URL and rules','error');
+    }
+  }).catch(function(){
+    if(lbl)lbl.innerHTML='<span style="color:var(--red)">&#9679; Network error</span>';
+    toast('Cannot reach Firebase — check URL','error');
+  });
+}
+
+// ── Submit score ───────────────────────────────────────────────
+async function mjSubmit(){
+  var who=mjWhoAmI();
+  if(!who){toast('Set your role (Her/Him) in Settings first','error');return;}
+  var inp=document.getElementById('mj-score-input');
+  var val=parseInt(inp.value);
+  if(isNaN(val)||val<0||val>100){toast('Enter a score 0–100','error');return;}
+  var today=new Date().toISOString().slice(0,10);
+  inp.value='';
+  // Write to Firebase + local
+  var path='mj/scores/'+who+'/'+today;
+  var ok=await fbWrite(path,val);
+  // Also update local
+  var d=mjLoadLocal();
+  d.scores=d.scores||{her:{},him:{}};
+  d.scores[who]=d.scores[who]||{};
+  d.scores[who][today]=val;
+  mjSaveLocal(d);
+  var myVal=document.getElementById('mj-my-val');
+  if(myVal)myVal.textContent=val;
+  toast('Love score submitted! '+(ok?'&#9829; Synced':'(offline)'),ok?'success':'error');
+  mjRenderFromLocal();
+  renderMJCard();
+}
+
+// ── Add stock note ─────────────────────────────────────────────
+async function mjAddNote(){
+  var who=mjWhoAmI();
+  if(!who){toast('Set your role in Settings first','error');return;}
+  var sym=(document.getElementById('mj-note-sym').value||'').toUpperCase().trim();
+  var text=(document.getElementById('mj-note-text').value||'').trim();
+  if(!sym||!text){toast('Enter symbol and note','error');return;}
+  document.getElementById('mj-note-sym').value='';
+  document.getElementById('mj-note-text').value='';
+  var note={sym:sym,text:text,author:who,ts:Date.now()};
+  // Push to Firebase
+  if(fbURL()){
+    try{
+      await fetch(fbURL()+'/mj/notes.json',{method:'POST',body:JSON.stringify(note),headers:{'Content-Type':'application/json'}});
+    }catch(e){}
+  }
+  // Update local
+  var d=mjLoadLocal();d.notes=d.notes||[];d.notes.unshift(note);if(d.notes.length>100)d.notes=d.notes.slice(0,100);mjSaveLocal(d);
+  mjRenderNotes(d.notes);
+  toast((who==='her'?'Her':'His')+' note on '+sym+' saved &#9829;','success');
+}
+
+// ── Trade ──────────────────────────────────────────────────────
+async function mjTrade(action){
+  var who=mjWhoAmI()||'her';
+  var d=mjLoadLocal(),today=new Date().toISOString().slice(0,10);
   var combo=mjGetCombo(d,today)||50;
   d.trades=d.trades||[];
-  d.trades.unshift({date:today,action:action,price:combo,time:new Date().toLocaleTimeString()});
+  var trade={date:today,action:action,price:combo,time:new Date().toLocaleTimeString(),by:who};
+  d.trades.unshift(trade);
   if(d.trades.length>50)d.trades=d.trades.slice(0,50);
-  mjSave(d);mjRender();renderMJCard();
+  mjSaveLocal(d);
+  if(fbURL()){try{await fbWrite('mj/trades',d.trades);}catch(e){}}
+  mjRenderTradeLog(d.trades);renderMJCard();
 }
+
+// ── Render helpers ─────────────────────────────────────────────
 function mjGetCombo(d,date){
-  var her=d.her&&d.her[date],him=d.him&&d.him[date];
+  var sc=d.scores||{her:d.her||{},him:d.him||{}};
+  var her=sc.her&&sc.her[date],him=sc.him&&sc.him[date];
   if(her!==undefined&&him!==undefined)return Math.round((her+him)/2);
   if(her!==undefined)return her;
   if(him!==undefined)return him;
   return null;
 }
-function mjRender(){
-  var d=mjLoad(),today=new Date().toISOString().slice(0,10);
-  var th=d.her&&d.her[today],ti=d.him&&d.him[today];
-  if(th!==undefined){var e=document.getElementById('mj-her-val');if(e)e.textContent=th;}
-  if(ti!==undefined){var e2=document.getElementById('mj-him-val');if(e2)e2.textContent=ti;}
-  var ks={};Object.keys(d.her||{}).forEach(function(k){ks[k]=1;});Object.keys(d.him||{}).forEach(function(k){ks[k]=1;});
+
+function mjRenderNotes(notes){
+  var el=document.getElementById('mj-notes-list');if(!el)return;
+  if(!notes||!notes.length){el.innerHTML='<div style="text-align:center;color:rgba(255,105,180,.3);font-size:12px;padding:16px">No notes yet — add your first stock note! &#9829;</div>';return;}
+  el.innerHTML=notes.slice(0,30).map(function(n){
+    var isHer=n.author==='her';
+    var col=isHer?'#ff6fa3':'#c084fc';
+    var align=isHer?'flex-start':'flex-end';
+    var bg=isHer?'rgba(255,105,180,.08)':'rgba(192,132,252,.08)';
+    var dt=n.ts?new Date(n.ts).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    return '<div style="display:flex;flex-direction:column;align-items:'+align+';margin-bottom:8px">'
+      +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:2px">'
+      +'<span style="font-size:10px;color:'+col+';font-weight:700">'+(isHer?'&#128150; Her':'&#128153; Him')+'</span>'
+      +'<span style="background:rgba(255,105,180,.15);color:#ff6fa3;font-size:10px;padding:1px 6px;border-radius:4px;cursor:pointer" onclick="openModal(\''+n.sym+'\')">'+escH(n.sym)+'</span>'
+      +'<span style="font-size:9px;color:rgba(255,255,255,.3)">'+dt+'</span>'
+      +'</div>'
+      +'<div style="background:'+bg+';border:1px solid '+col+'33;border-radius:8px;padding:7px 10px;max-width:85%;font-size:12px;color:rgba(255,255,255,.85)">'+escH(n.text)+'</div>'
+      +'</div>';
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+function mjRenderTradeLog(trades){
+  var tl=document.getElementById('mj-trade-log');if(!tl)return;
+  if(!trades||!trades.length){tl.innerHTML='<div style="color:rgba(255,105,180,.3);padding:10px 0;text-align:center;font-size:11px">No trades yet</div>';return;}
+  tl.innerHTML=trades.map(function(t){
+    var c=t.action==='BUY'?'#ff6fa3':t.action==='SELL'?'#818cf8':'#c084fc';
+    return '<div class="mj-log-item"><span style="color:'+c+';font-weight:700;min-width:36px">'+t.action+'</span><span style="color:rgba(255,255,255,.7)">@'+t.price+'</span><span style="color:rgba(255,255,255,.4)">'+t.date+'</span><span style="color:rgba(255,255,255,.3)">'+t.time+'</span>'+(t.by?'<span style="color:rgba(255,105,180,.4);font-size:10px">'+t.by+'</span>':'')+'</div>';
+  }).join('');
+}
+
+function mjRenderFromData(data){
+  if(!data)return;
+  // Merge remote data into local
+  var local=mjLoadLocal();
+  if(data.scores)local.scores=data.scores;
+  if(data.trades)local.trades=data.trades;
+  if(data.notes){
+    // notes from Firebase come as an object (POST generates keys)
+    var notesArr=Array.isArray(data.notes)?data.notes:Object.values(data.notes||{});
+    notesArr.sort(function(a,b){return(b.ts||0)-(a.ts||0);});
+    local.notes=notesArr;
+  }
+  mjSaveLocal(local);
+  mjRenderFromLocal();
+  mjUpdatePartnerPresence(data);
+  renderMJCard();
+}
+
+function mjRenderFromLocal(){
+  var d=mjLoadLocal();
+  var who=mjWhoAmI();
+  var partnerKey=who==='him'?'her':'him';
+  var today=new Date().toISOString().slice(0,10);
+  var sc=d.scores||{her:d.her||{},him:d.him||{}};
+  // My score
+  var myScore=who?sc[who]&&sc[who][today]:null;
+  var myValEl=document.getElementById('mj-my-val');
+  if(myValEl)myValEl.textContent=myScore!==undefined?myScore:'--';
+  // Partner score
+  var partnerScore=who?sc[partnerKey]&&sc[partnerKey][today]:null;
+  var pvEl=document.getElementById('mj-partner-val');
+  var ptEl=document.getElementById('mj-partner-time');
+  if(pvEl)pvEl.textContent=partnerScore!==undefined?partnerScore:'--';
+  if(ptEl)ptEl.textContent=partnerScore!==undefined?'&#9829; Submitted today':'Waiting for partner…';
+  // Combine all dates
+  var ks={};
+  Object.keys(sc.her||{}).forEach(function(k){ks[k]=1;});
+  Object.keys(sc.him||{}).forEach(function(k){ks[k]=1;});
   var allDates=Object.keys(ks).sort();
   var combo=mjGetCombo(d,today);
   var allCombos=allDates.map(function(dt){return mjGetCombo(d,dt);}).filter(function(v){return v!==null;});
   var pd=document.getElementById('mj-price-display');
   if(pd){
+    pd.textContent=combo!==null?combo.toFixed(1):'--';
     if(combo!==null){
-      pd.textContent=combo.toFixed(1);
       var prev=allDates.filter(function(x){return x<today;}).map(function(dt){return mjGetCombo(d,dt);}).filter(function(v){return v!==null;});
-      var pv=prev.length?prev[prev.length-1]:null;
-      var cp=pv?((combo-pv)/pv*100).toFixed(1):0;
-      var ce=document.getElementById('mj-chg-display');if(ce){ce.textContent=(cp>=0?'+':'')+cp+'% today';ce.style.color=cp>=0?'#ff6fa3':'#818cf8';}
-      var sig=combo>=75?'STRONG BUY':combo>=60?'BUY':combo>=45?'HOLD':combo>=30?'SELL':'BEARISH';
-      var sc=combo>=60?'mj-signal-buy':combo>=45?'mj-signal-hold':'mj-signal-sell';
-      var se=document.getElementById('mj-signal-display');if(se)se.innerHTML='<span class="'+sc+'">'+sig+'</span>';
-    } else {
-      pd.textContent='--';
-      var se2=document.getElementById('mj-signal-display');if(se2)se2.innerHTML='<span style="color:rgba(255,105,180,.4);font-size:12px">Submit scores to see signal</span>';
+      var pv2=prev.length?prev[prev.length-1]:null;
+      var chgEl=document.getElementById('mj-chg-display');
+      if(chgEl&&pv2!==null){var chg=+((combo-pv2)/pv2*100).toFixed(2);chgEl.textContent=(chg>=0?'+':'')+chg+'%';chgEl.style.color=chg>=0?'var(--green)':'var(--red)';}
+      var sig=combo>=75?'STRONG BUY &#9829;':combo>=60?'BUY &#9829;':combo>=45?'HOLD &#9829;':combo>=30?'SELL &#9829;':'BEARISH &#9829;';
+      var sigCol=combo>=60?'var(--green)':combo>=45?'#c084fc':'var(--red)';
+      var se=document.getElementById('mj-signal-display');if(se)se.innerHTML='<span style="color:'+sigCol+';font-size:14px;font-weight:700">'+sig+'</span>';
     }
   }
-  if(allCombos.length){
-    var hi=Math.max.apply(null,allCombos),lo=Math.min.apply(null,allCombos),av=Math.round(allCombos.reduce(function(a,b){return a+b;},0)/allCombos.length);
-    var h52=document.getElementById('mj-52h');if(h52)h52.textContent=hi;
-    var l52=document.getElementById('mj-52l');if(l52)l52.textContent=lo;
-    var avg=document.getElementById('mj-avg');if(avg)avg.textContent=av;
-  }
+  var hi=allCombos.length?Math.max.apply(null,allCombos):null;
+  var lo=allCombos.length?Math.min.apply(null,allCombos):null;
+  var avg=allCombos.length?Math.round(allCombos.reduce(function(a,b){return a+b;},0)/allCombos.length):null;
+  var h52=document.getElementById('mj-52h');var l52=document.getElementById('mj-52l');var avEl=document.getElementById('mj-avg');
+  if(h52)h52.textContent=hi!==null?hi:'--';
+  if(l52)l52.textContent=lo!==null?lo:'--';
+  if(avEl)avEl.textContent=avg!==null?avg:'--';
   mjRenderChart(d,allDates,combo,today);
-  var tl=document.getElementById('mj-trade-log');
-  if(tl)tl.innerHTML=(d.trades&&d.trades.length)?d.trades.map(function(t){var c=t.action==='BUY'?'#ff6fa3':t.action==='SELL'?'#818cf8':'#c084fc';return '<div class="mj-log-item"><span style="color:'+c+';font-weight:700;min-width:36px">'+t.action+'</span><span style="color:rgba(255,255,255,.7)">@'+t.price+'</span><span style="color:rgba(255,255,255,.4)">'+t.date+'</span><span style="color:rgba(255,255,255,.3)">'+t.time+'</span></div>';}).join(''):'<div style="color:rgba(255,105,180,.3);padding:10px 0;text-align:center;font-size:11px">No trades yet</div>';
+  mjRenderTradeLog(d.trades||[]);
+  mjRenderNotes(d.notes||[]);
 }
+
+function mjRender(){mjRenderFromLocal();}
+
 function mjRenderChart(d,allDates,todayCombo,today){
   var el=document.getElementById('mj-chart');if(!el)return;
+  var sc=d.scores||{her:d.her||{},him:d.him||{}};
   var show=allDates.slice(-20);
-  if(!show.length){el.innerHTML='<div style="text-align:center;color:rgba(255,105,180,.4);padding:30px 0;font-size:12px">Submit your first love score to start tracking</div>';return;}
-  var hv=show.map(function(dt){return d.her&&d.her[dt]!==undefined?d.her[dt]:null;});
-  var iv=show.map(function(dt){return d.him&&d.him[dt]!==undefined?d.him[dt]:null;});
+  if(!show.length){el.innerHTML='<div style="text-align:center;color:rgba(255,105,180,.4);padding:30px 0;font-size:12px">Submit your first love score to start tracking &#9829;</div>';return;}
+  var hv=show.map(function(dt){return sc.her&&sc.her[dt]!==undefined?sc.her[dt]:null;});
+  var iv=show.map(function(dt){return sc.him&&sc.him[dt]!==undefined?sc.him[dt]:null;});
   var cv=show.map(function(dt){return mjGetCombo(d,dt);});
   var W=Math.max(el.clientWidth||400,300),H=150,pL=28,pR=8,pT=8,pB=28,pw=W-pL-pR,ph=H-pT-pB;
   var all=hv.concat(iv,cv).filter(function(v){return v!==null;});
@@ -801,31 +1108,32 @@ function mjRenderChart(d,allDates,todayCombo,today){
   svg.push('</svg>');el.innerHTML=svg.join('');
 }
 
-
 // ===================== MJ STOCK CARD =====================
 function renderMJCard(){
-  var d=mjLoad(),today=new Date().toISOString().slice(0,10);
+  var d=mjLoadLocal(),today=new Date().toISOString().slice(0,10);
   var combo=mjGetCombo(d,today);
   var allDates=[];
-  var ks={};Object.keys(d.her||{}).forEach(function(k){ks[k]=1;});Object.keys(d.him||{}).forEach(function(k){ks[k]=1;});
+  var ks={};
+  var sc=d.scores||{her:d.her||{},him:d.him||{}};
+  Object.keys(sc.her||{}).forEach(function(k){ks[k]=1;});
+  Object.keys(sc.him||{}).forEach(function(k){ks[k]=1;});
   allDates=Object.keys(ks).sort();
   var allCombos=allDates.map(function(dt){return mjGetCombo(d,dt);}).filter(function(v){return v!==null;});
   var prev=allDates.filter(function(x){return x<today;}).map(function(dt){return mjGetCombo(d,dt);}).filter(function(v){return v!==null;});
   var pv=prev.length?prev[prev.length-1]:null;
   var priceStr=combo!==null?combo.toFixed(1):'--';
-  var chgStr='', chgCls='', chgVal=0;
-  if(combo!==null&&pv!==null){chgVal=+((combo-pv)/pv*100).toFixed(2);chgStr=(chgVal>=0?'+':'')+chgVal+'%';chgCls=chgVal>=0?'up':'down';}
+  var chgStr='',chgCls='';
+  if(combo!==null&&pv!==null){var chgVal=+((combo-pv)/pv*100).toFixed(2);chgStr=(chgVal>=0?'+':'')+chgVal+'%';chgCls=chgVal>=0?'up':'down';}
   var sig=combo!==null?(combo>=75?'STRONG BUY':combo>=60?'BUY':combo>=45?'HOLD':combo>=30?'SELL':'BEARISH'):'Submit Scores';
   var sigColor=combo!==null?(combo>=60?'var(--green)':combo>=45?'#c084fc':'var(--red)'):'rgba(255,105,180,.4)';
   var hi=allCombos.length?Math.max.apply(null,allCombos):100;
   var lo=allCombos.length?Math.min.apply(null,allCombos):0;
   var rng=(combo!==null&&hi>lo)?(((combo-lo)/(hi-lo))*100).toFixed(0):null;
-  // sparkline SVG of last 14 combo values
   var recent=allCombos.slice(-14);
   var sparkSvg='';
   if(recent.length>1){
     var W=100,H=28,mn=Math.max(0,Math.min.apply(null,recent)-5),mx=Math.min(100,Math.max.apply(null,recent)+5),rg=mx-mn||1;
-    var pts=recent.map(function(v,i){return [(W*i/(recent.length-1)).toFixed(1),((H-2)-(v-mn)/rg*(H-4)+2).toFixed(1)];});
+    var pts=recent.map(function(v,i){return[(W*i/(recent.length-1)).toFixed(1),((H-2)-(v-mn)/rg*(H-4)+2).toFixed(1)];});
     var pstr=pts.map(function(p){return p[0]+','+p[1];}).join(' ');
     var fillPts='0,'+(H-1)+' '+pstr+' '+W+','+(H-1);
     sparkSvg='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block;margin-top:6px" preserveAspectRatio="none"><defs><linearGradient id="mj-grad" x1="0" x2="1" y1="0" y2="0"><stop offset="0%" stop-color="#ff6fa3"/><stop offset="100%" stop-color="#c084fc"/></linearGradient></defs><polygon points="'+fillPts+'" fill="url(#mj-grad)" opacity="0.15"/><polyline points="'+pstr+'" fill="none" stroke="url(#mj-grad)" stroke-width="1.8"/></svg>';
@@ -846,7 +1154,6 @@ function renderMJCard(){
     +(rng!==null?'<div class="w52-bar"><div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,105,180,.4)"><span>ATL '+lo+'</span><span>'+rng+'%</span><span>ATH '+hi+'</span></div><div class="w52-track" style="background:rgba(255,105,180,.1)"><div class="w52-thumb" style="left:'+rng+'%;background:linear-gradient(90deg,#ff6fa3,#c084fc)"></div></div></div>':'')
     +sparkSvg
     +'</div>';
-  // Always render into the fixed MJ slot on the dashboard
   var slot=document.getElementById('mj-card-slot');
   if(slot){slot.innerHTML='<div id="mj-card-widget" style="display:grid;grid-template-columns:minmax(180px,240px);margin-bottom:4px">'+cardHtml+'</div>';}
 }
@@ -1084,6 +1391,31 @@ async function fetchAnalyst(sym){
     return result;
   }catch(e){return null;}
 }
+async function fetchTechSignals(sym){
+  if(!KEYS.fh)return null;
+  try{
+    var now=Math.floor(Date.now()/1000);
+    var from=now-400*86400;
+    var base='https://finnhub.io/api/v1/indicator?symbol='+encodeURIComponent(sym)+'&resolution=D&from='+from+'&to='+now+'&token='+KEYS.fh;
+    var [rsiR,maR]=await Promise.all([
+      fetch(base+'&indicator=rsi&timeperiod=14'),
+      fetch(base+'&indicator=sma&timeperiod=50')
+    ]);
+    var rsiJ=rsiR.ok?await rsiR.json():{};
+    var maJ=maR.ok?await maR.json():{};
+    var rsi=rsiJ.rsi&&rsiJ.rsi.length?+rsiJ.rsi[rsiJ.rsi.length-1].toFixed(1):null;
+    var ma50=maJ.sma&&maJ.sma.length?+maJ.sma[maJ.sma.length-1].toFixed(2):null;
+    // Fetch MA200 separately
+    var ma200R=await fetch(base+'&indicator=sma&timeperiod=200');
+    var ma200J=ma200R.ok?await ma200R.json():{};
+    var ma200=ma200J.sma&&ma200J.sma.length?+ma200J.sma[ma200J.sma.length-1].toFixed(2):null;
+    // Current price to determine signal
+    var cached=getCached(sym);
+    var price=cached?cached.price:null;
+    var signal=price&&ma200?(price>ma200?'ABOVE MA200':'BELOW MA200'):'N/A';
+    return{rsi:rsi||'N/A',ma50:ma50||'N/A',ma200:ma200||'N/A',signal:signal};
+  }catch(e){return null;}
+}
 function renderAnalystBlock(an,price,ab){
   if(!an||!ab){if(ab)ab.innerHTML='';return;}
   var total=an.buy+an.hold+an.sell;
@@ -1174,6 +1506,112 @@ async function fetchHist(sym,days){
   localStorage.setItem(k,JSON.stringify({ts:Date.now(),data:data}));
   return data;
 }
+// ── fetchHistRange: multi-range chart data ────────────────────────
+var hrcache={};
+var YAHOO_RANGES={
+  '1D':{range:'1d',interval:'5m'},
+  '1W':{range:'5d',interval:'15m'},
+  '1M':{range:'1mo',interval:'1d'},
+  '3M':{range:'3mo',interval:'1d'},
+  '6M':{range:'6mo',interval:'1d'},
+  'YTD':{range:'ytd',interval:'1d'},
+  '1Y':{range:'1y',interval:'1d'},
+  '2Y':{range:'2y',interval:'1wk'},
+  '5Y':{range:'5y',interval:'1wk'},
+  '10Y':{range:'10y',interval:'1mo'},
+  'ALL':{range:'max',interval:'1mo'}
+};
+var FH_RANGES={
+  '1D':{res:'30',days:2},'1W':{res:'60',days:7},
+  '1M':{res:'D',days:30},'3M':{res:'D',days:90},
+  '6M':{res:'D',days:180},'YTD':{res:'D',days:180},
+  '1Y':{res:'D',days:365},'2Y':{res:'W',days:730},
+  '5Y':{res:'W',days:1825},'10Y':{res:'M',days:3650},
+  'ALL':{res:'M',days:5475}
+};
+var DEMO_DAYS={'1D':1,'1W':7,'1M':30,'3M':90,'6M':180,'YTD':180,'1Y':365,'2Y':730,'5Y':1825,'10Y':3650,'ALL':5475};
+async function fetchHistRange(sym,range){
+  var ck='hr_'+sym+'_'+range;
+  var ttl=range==='1D'?900000:3600000;
+  if(hrcache[ck]&&Date.now()-hrcache[ck].ts<ttl)return hrcache[ck].data;
+  var data=null;
+  // Try Yahoo Finance (free, no key, supports all ranges)
+  try{
+    var yr=YAHOO_RANGES[range]||YAHOO_RANGES['3M'];
+    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval='+yr.interval+'&range='+yr.range+'&includePrePost=false';
+    var r=await fetch(url);
+    if(r.ok){
+      var j=await r.json();
+      var res=j.chart&&j.chart.result&&j.chart.result[0];
+      if(res&&res.timestamp){
+        var ts=res.timestamp,cls=res.indicators&&res.indicators.quote&&res.indicators.quote[0]&&res.indicators.quote[0].close;
+        if(cls){
+          var isMin=yr.interval.endsWith('m');
+          data=[];
+          for(var i=0;i<ts.length;i++){
+            if(cls[i]==null)continue;
+            var dt=new Date(ts[i]*1000);
+            var lbl=isMin?
+              dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}):
+              (yr.interval==='1mo'?dt.toISOString().slice(0,7):dt.toISOString().slice(0,10));
+            data.push({date:lbl,close:+cls[i].toFixed(2)});
+          }
+          if(!data.length)data=null;
+        }
+      }
+    }
+  }catch(e){}
+  // Fallback: Finnhub
+  if(!data&&KEYS.fh){
+    try{
+      var fr=FH_RANGES[range]||FH_RANGES['3M'];
+      var now2=Math.floor(Date.now()/1000),from2=now2-fr.days*86400;
+      var j2=await(await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(sym)+'&resolution='+fr.res+'&from='+from2+'&to='+now2+'&token='+KEYS.fh)).json();
+      if(j2.s==='ok'){
+        var isMin2=fr.res!=='D'&&fr.res!=='W'&&fr.res!=='M';
+        data=j2.t.map(function(t,i){
+          var dt2=new Date(t*1000);
+          var lbl2=isMin2?dt2.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}):dt2.toISOString().slice(0,10);
+          return{date:lbl2,close:+j2.c[i].toFixed(2)};
+        });
+        if(!data.length)data=null;
+      }
+    }catch(e){}
+  }
+  // Fallback: demo
+  if(!data)data=demoHist(sym,DEMO_DAYS[range]||90);
+  hrcache[ck]={ts:Date.now(),data:data};
+  return data;
+}
+// ── Modal chart state ──────────────────────────────────────────────
+var mModalSym=null,mModalPriceData=null,mModalRange='3M';
+function setModalRange(range){
+  mModalRange=range;
+  document.querySelectorAll('.range-btn').forEach(function(b){b.classList.toggle('active',b.textContent.trim()===range);});
+  if(mModalSym&&mModalPriceData)drawModalChart(mModalSym,range,mModalPriceData);
+}
+async function drawModalChart(sym,range,priceData){
+  var ld=document.getElementById('m-chart-loading');
+  if(ld){ld.style.display='flex';}
+  var h=await fetchHistRange(sym,range);
+  if(ld){ld.style.display='none';}
+  var up=priceData.changePct>=0;
+  var col=up?'#10b981':'#ef4444';
+  var mCtx=document.getElementById('m-chart').getContext('2d');
+  if(mChart)mChart.destroy();
+  mChart=new Chart(mCtx,{
+    type:'line',
+    data:{labels:h.map(function(x){return x.date;}),datasets:[{data:h.map(function(x){return x.close;}),borderColor:col,borderWidth:2,fill:true,tension:.2,pointRadius:0,pointHoverRadius:4,backgroundColor:up?'rgba(16,185,129,.07)':'rgba(239,68,68,.07)'}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return' $'+c.parsed.y.toFixed(2);}}}},
+      scales:{
+        x:{ticks:{color:'#4b5e7a',maxTicksLimit:8,font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
+        y:{ticks:{color:'#4b5e7a',font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}}
+      }
+    }
+  });
+}
 // ── 5. CLOCK ─────────────────────────────────────────────────────
 function updateClock(){
   var now=new Date();
@@ -1209,9 +1647,11 @@ async function loadIndexStrip(){
 }
 // ── 7. SPARKLINES ────────────────────────────────────────────────
 var sparks={};
-function drawSpark(canvasId,sym,price,open){
+async function drawSpark(canvasId,sym,price,open){
   var el=document.getElementById(canvasId);if(!el)return;
-  var h=demoHist(sym,14),pts=h.map(function(x){return x.close;});
+  var raw=await fetchHistRange(sym,'1M');
+  var h=raw.slice(-14); // last 14 data points
+  var pts=h.map(function(x){return x.close;});
   if(price)pts.push(price);
   var up=open!=null?price>open:pts[pts.length-1]>=pts[0],col=up?'#10b981':'#ef4444';
   if(sparks[canvasId]){try{sparks[canvasId].destroy();}catch(e){}}
@@ -1413,24 +1853,31 @@ async function loadTodayGainers(){
   renderLB('lb-lose','&#128997; Top Losers (Demo)',sorted.slice(-20).reverse(),false);
   renderLB('lb-active','&#9889; Most Active (Demo)',results.slice().sort(function(){return Math.random()-.5;}).slice(0,20),null);
 }
-var PDAYS={'1d':1,'15d':15,'1m':30,'3m':90,'6m':180,'1y':252,'5y':1260};
+var PDAYS={'1d':1,'1w':7,'1m':30,'3m':90,'6m':180,'ytd':180,'1y':252,'2y':504,'5y':1260,'10y':2520,'all':5040};
 function selPeriod(btn,period){
   document.querySelectorAll('.pp').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');gPeriod=period;loadPeriodGainers(period);
 }
 async function loadPeriodGainers(period){
-  var days=PDAYS[period]||252;
-  setLB('lb-pg','&#129001; Top 20 Gainers','Calculating&hellip;');
-  setLB('lb-pl','&#128997; Top 20 Losers','Calculating&hellip;');
-  setLB('lb-ps','&#128193; By Sector','Calculating&hellip;');
+  var rangeMap={'1d':'1D','1w':'1W','1m':'1M','3m':'3M','6m':'6M','ytd':'YTD','1y':'1Y','2y':'2Y','5y':'5Y','10y':'10Y','all':'ALL'};
+  var range=rangeMap[period]||'3M';
+  setLB('lb-pg','&#129001; Top 20 Gainers','Fetching live data&hellip;');
+  setLB('lb-pl','&#128997; Top 20 Losers','Fetching live data&hellip;');
+  setLB('lb-ps','&#128193; By Sector','Fetching live data&hellip;');
   var all=TECH_STOCKS.concat(WATCHLIST_STOCKS).concat(EXTENDED),results=[];
+  // Fetch all in parallel (Yahoo Finance — free, no key needed)
+  var hists=await Promise.all(all.map(function(s){return fetchHistRange(s.symbol,range);}));
   for(var i=0;i<all.length;i++){
-    var h=demoHist(all[i].symbol,days+5);
-    if(h.length>=2)results.push({symbol:all[i].symbol,name:all[i].name,sector:all[i].sector,returnPct:((h[h.length-1].close-h[0].close)/h[0].close)*100,currentPrice:h[h.length-1].close});
+    var h=hists[i];
+    if(h&&h.length>=2){
+      var ret=((h[h.length-1].close-h[0].close)/h[0].close)*100;
+      results.push({symbol:all[i].symbol,name:all[i].name,sector:all[i].sector,returnPct:ret,currentPrice:h[h.length-1].close});
+    }
   }
   var sorted=results.slice().sort(function(a,b){return b.returnPct-a.returnPct;});
-  renderLB('lb-pg','&#129001; Top 20 Gainers ('+period+')',sorted.slice(0,20),true);
-  renderLB('lb-pl','&#128997; Top 20 Losers ('+period+')',sorted.slice(-20).reverse(),false);
+  var lbl=range.toUpperCase();
+  renderLB('lb-pg','&#129001; Top 20 Gainers &middot; '+lbl,sorted.slice(0,20),true);
+  renderLB('lb-pl','&#128997; Top 20 Losers &middot; '+lbl,sorted.slice(-20).reverse(),false);
   var secs={};
   results.forEach(function(r){if(!secs[r.sector])secs[r.sector]=[];secs[r.sector].push(r.returnPct);});
   var secArr=Object.keys(secs).map(function(sec){
@@ -1457,24 +1904,47 @@ function renderLB(id,title,stocks){
   if(el)el.innerHTML='<div class="lb-hdr">'+title+'</div><div class="lb-cols"><span>#</span><span>Symbol</span><span>Name</span><span style="text-align:right">Return</span></div>'+(rows||'<div class="empty">No data</div>');
 }
 // ── 16. CALENDAR ─────────────────────────────────────────────────
-function renderCalendar(){
+function renderEarnList(data){
+  var earn=document.getElementById('earn-list');if(!earn)return;
   var today=new Date().toISOString().slice(0,10);
-  var earn=document.getElementById('earn-list');
-  if(earn){
-    earn.innerHTML=EARN_CAL.map(function(e){
-      var daysTo=Math.round((new Date(e.date)-new Date(today))/(86400000));
-      var urgent=daysTo<=7,near=daysTo<=14;
-      var dotCol=urgent?'var(--red)':near?'var(--yellow)':'var(--green)';
-      var dt=new Date(e.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      return '<div class="earn-row" onclick="openModal(\''+e.symbol+'\')">'
-        +'<div class="earn-urgency" style="background:'+dotCol+'"></div>'
-        +'<div class="earn-date">'+dt+'</div>'
-        +'<div class="earn-sym">'+e.symbol+'</div>'
-        +'<div class="earn-nm">'+e.name+'&nbsp;<span style="font-size:10px;color:var(--text3)">'+e.period+'</span></div>'
-        +'<div class="earn-est" style="color:var(--text2)">EPS est. $'+e.est+'</div>'
-        +'</div>';
-    }).join('');
-  }
+  if(!data||!data.length){earn.innerHTML='<p class="empty" style="padding:14px">No upcoming earnings found</p>';return;}
+  earn.innerHTML=data.map(function(e){
+    var daysTo=Math.round((new Date(e.date)-new Date(today))/(86400000));
+    var urgent=daysTo<=7,near=daysTo<=14;
+    var dotCol=urgent?'var(--red)':near?'var(--yellow)':'var(--green)';
+    var dt=new Date(e.date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return '<div class="earn-row" onclick="openModal(\''+e.symbol+'\')">'
+      +'<div class="earn-urgency" style="background:'+dotCol+'"></div>'
+      +'<div class="earn-date">'+dt+'</div>'
+      +'<div class="earn-sym">'+e.symbol+'</div>'
+      +'<div class="earn-nm">'+(e.name||e.symbol)+'&nbsp;<span style="font-size:10px;color:var(--text3)">'+(e.period||'')+'</span></div>'
+      +'<div class="earn-est" style="color:var(--text2)">EPS est. '+(e.est&&e.est!=='N/A'?'$'+e.est:'N/A')+'</div>'
+      +'</div>';
+  }).join('');
+}
+async function loadEarningsCalendar(){
+  var earn=document.getElementById('earn-list');if(!earn)return;
+  if(!KEYS.fh){renderEarnList(EARN_CAL);return;}
+  earn.innerHTML='<p style="color:var(--text2);padding:12px;font-size:13px">Loading live earnings calendar…</p>';
+  try{
+    var today2=new Date().toISOString().slice(0,10);
+    var future=new Date(Date.now()+90*86400000).toISOString().slice(0,10);
+    var j=await(await fetch('https://finnhub.io/api/v1/calendar/earnings?from='+today2+'&to='+future+'&token='+KEYS.fh)).json();
+    if(j&&j.earningsCalendar&&j.earningsCalendar.length){
+      var syms=new Set(TECH_STOCKS.concat(WATCHLIST_STOCKS).concat(EXTENDED).map(function(s){return s.symbol;}));
+      var filtered=j.earningsCalendar.filter(function(e){return syms.has(e.symbol);}).slice(0,30);
+      if(filtered.length){
+        renderEarnList(filtered.map(function(e){
+          return{date:e.date,symbol:e.symbol,name:e.symbol,period:e.quarter?'Q'+e.quarter+' '+e.year:'',est:e.epsEstimate!=null?e.epsEstimate.toFixed(2):'N/A'};
+        }));
+        return;
+      }
+    }
+  }catch(e){}
+  renderEarnList(EARN_CAL); // fallback
+}
+function renderCalendar(){
+  loadEarningsCalendar();
   var econ=document.getElementById('econ-list');
   if(econ){
     econ.innerHTML=ECON_CAL.map(function(e){
@@ -1723,7 +2193,7 @@ async function openModal(sym){
   var all=INDICES.concat(TECH_STOCKS).concat(WATCHLIST_STOCKS).concat(EXTENDED);
   var s=null;for(var i=0;i<all.length;i++){if(all[i].symbol===sym){s=all[i];break;}}
   if(!s)s={symbol:sym,name:sym,sector:'Stock'};
-  var d=await fetchQ(sym),h=await fetchHist(sym,90);
+  var d=await fetchQ(sym);
   var up=d.changePct>=0,sign=up?'+':'';
   document.getElementById('m-ticker').textContent=sym;
   document.getElementById('m-name').textContent=s.name;
@@ -1746,26 +2216,32 @@ async function openModal(sym){
       else if(ab){ab.innerHTML='';}
     });
   }
+  // Live technical indicators (Finnhub free)
+  var techBlock=document.getElementById('m-tech-block');
+  if(techBlock)techBlock.innerHTML='';
+  if(KEYS.fh){
+    fetchTechSignals(sym).then(function(ts){
+      var tb=document.getElementById('m-tech-block');
+      if(!tb||!ts)return;
+      var rsiColor=ts.rsi>70?'var(--red)':ts.rsi<30?'var(--green)':'var(--text)';
+      tb.innerHTML='<div class="analyst-block" style="margin-top:10px">'
+        +'<div class="ab-hdr">&#128200; Technical Signals <span style="font-size:10px;color:var(--green);font-weight:400">&#9679; Live</span></div>'
+        +'<div class="ab-grid">'
+        +'<div class="ab-item"><div class="al">RSI(14)</div><div class="av" style="color:'+rsiColor+'">'+ts.rsi+'</div></div>'
+        +'<div class="ab-item"><div class="al">MA50</div><div class="av">$'+ts.ma50+'</div></div>'
+        +'<div class="ab-item"><div class="al">MA200</div><div class="av">$'+ts.ma200+'</div></div>'
+        +'<div class="ab-item"><div class="al">Signal</div><div class="av" style="color:'+(ts.signal==='ABOVE MA200'?'var(--green)':'var(--red)')+'">'+ts.signal+'</div></div>'
+        +'</div></div>';
+    });
+  }
   document.getElementById('m-tags').innerHTML=
     '<span style="padding:3px 8px;background:var(--card2);border-radius:4px;font-size:12px;color:var(--text2)">'+(s.sector||'Stock')+'</span> '
     +(d.live?'<span style="padding:3px 8px;background:rgba(16,185,129,.1);border-radius:4px;font-size:12px;color:var(--green)">&#9679; Live Data</span>':'<span style="padding:3px 8px;background:rgba(245,158,11,.1);border-radius:4px;font-size:12px;color:var(--yellow)">Demo Prices</span>');
-  var mCtx=document.getElementById('m-chart').getContext('2d');
-  if(mChart)mChart.destroy();
-  var col=up?'#10b981':'#ef4444';
-  var mOpts={
-    responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false}},
-    scales:{
-      x:{ticks:{color:'#4b5e7a',maxTicksLimit:6,font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
-      y:{ticks:{color:'#4b5e7a',font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}}
-    }
-  };
-  mChart=new Chart(mCtx,{
-    type:'line',
-    data:{labels:h.map(function(x){return x.date;}),datasets:[{data:h.map(function(x){return x.close;}),borderColor:col,borderWidth:2,fill:true,tension:.2,pointRadius:0,pointHoverRadius:4,backgroundColor:up?'rgba(16,185,129,.07)':'rgba(239,68,68,.07)'}]},
-    options:mOpts
-  });
+  // Reset range selector to default (3M) and store modal state
+  mModalSym=sym; mModalPriceData=d; mModalRange='3M';
+  document.querySelectorAll('.range-btn').forEach(function(b){b.classList.toggle('active',b.textContent.trim()==='3M');});
   document.getElementById('modal-ov').classList.add('open');
+  drawModalChart(sym,'3M',d);
 }
 function closeModal(e){if(!e||e.target===document.getElementById('modal-ov'))document.getElementById('modal-ov').classList.remove('open');}
 function prefillTrade(){document.getElementById('trade-sym').value=document.getElementById('m-ticker').textContent;closeModal();showTab('trade');updatePreview();}
@@ -1804,7 +2280,19 @@ function showTab(t){
     if(t==='gainers')loadTodayGainers();
     if(t==='calendar')renderCalendar();
     if(t==='analytics')renderAnalytics();
-    if(t==='mj')mjRender();
+    if(t==='mj'){
+      mjRenderFromLocal();
+      mjRenderRoleUI();
+      mjUpdateRoleButtons();
+      // Show setup banner if no Firebase configured
+      var banner=document.getElementById('mj-setup-banner');
+      if(banner)banner.style.display=fbURL()?'none':'block';
+      var pb=document.getElementById('mj-presence-bar');
+      if(pb&&mjWhoAmI()&&fbURL())pb.style.display='flex';
+      mjStartListen();
+      mjPingPresence();
+      setInterval(mjPingPresence,60000);
+    }
     if(t==='news')loadNews();
     if(t==='trade')renderPF();
     if(t==='backtest')btParams();
@@ -1826,6 +2314,14 @@ function populateDatalist(){
     var fhEl=document.getElementById('fh-key');if(fhEl)fhEl.value=KEYS.fh;
     var avEl=document.getElementById('av-key');if(avEl)avEl.value=KEYS.av;
     updateAPILabel();
+    // Load Firebase URL
+    var fbUrlEl=document.getElementById('fb-url-inp');
+    if(fbUrlEl&&localStorage.getItem('fb_url'))fbUrlEl.value=localStorage.getItem('fb_url');
+    // Update Firebase status label
+    var fbLbl=document.getElementById('fb-status-lbl');
+    if(fbLbl&&fbURL())fbLbl.innerHTML='<span style="color:var(--green)">&#9679; URL saved (click Connect to verify)</span>';
+    // Update role buttons
+    mjUpdateRoleButtons();
     populateDatalist();
     tabDone.dashboard=true;tabDone.settings=true;
     loadIndexStrip();
