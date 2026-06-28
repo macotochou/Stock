@@ -316,7 +316,7 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
       <option value="target_upside">Upside to Target &#8595;</option>
     </select>
     <span id="last-refresh" style="font-size:11px;color:var(--text3)"></span>
-    <button class="btn" onclick="initDashboard()">&#8635; Refresh</button>
+    <button class="btn" onclick="pcache={};initDashboard()">&#8635; Refresh</button>
   </div>
   <div id="mj-card-slot" style="margin-bottom:8px"></div>
   <div id="tech-grid" class="stock-grid"></div>
@@ -327,7 +327,7 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
   <div id="indices-strip" class="indices-grid"></div>
   <div class="sh" style="margin-top:8px">
     <h2>Watchlist Stocks</h2>
-    <div class="acts"><button class="btn" onclick="initWatchlist()">&#8635; Refresh</button></div>
+    <div class="acts"><button class="btn" onclick="pcache={};tabDone.watchlist=false;initWatchlist()">&#8635; Refresh</button></div>
   </div>
   <div id="watch-grid" class="stock-grid"></div>
 </div>
@@ -1045,10 +1045,37 @@ var pcache={};
 function getCached(s){var c=pcache[s];return(!c||Date.now()-c.ts>300000)?null:c.data;}
 function setCache(s,d){pcache[s]={ts:Date.now(),data:d};}
 var KEYS={fh:localStorage.getItem('fh_key')||'',av:localStorage.getItem('av_key')||''};
-function activeAPI(){return KEYS.fh?'fh':KEYS.av?'av':'demo';}
+function activeAPI(){return KEYS.fh?'fh':KEYS.av?'av':'yahoo';}
 // ── 4. FETCH ─────────────────────────────────────────────────────
+async function fetchYahoo(sym){
+  try{
+    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1d&includePrePost=false';
+    var r=await fetch(url);
+    if(!r.ok)return null;
+    var j=await r.json();
+    var res=j.chart&&j.chart.result&&j.chart.result[0];
+    if(!res||!res.meta)return null;
+    var m=res.meta;
+    var p=m.regularMarketPrice;
+    if(!p||p<=0)return null;
+    var chg=+(m.regularMarketChange||0).toFixed(2);
+    var chgPct=+(m.regularMarketChangePercent||0).toFixed(2);
+    var w={hi:m.fiftyTwoWeekHigh||+(p*1.30).toFixed(2),lo:m.fiftyTwoWeekLow||+(p*0.70).toFixed(2)};
+    return{price:p,change:chg,changePct:chgPct,
+      high:m.regularMarketDayHigh||+(p*1.015).toFixed(2),
+      low:m.regularMarketDayLow||+(p*0.985).toFixed(2),
+      open:m.regularMarketOpen||+(p/(1+chgPct/100)*1.002).toFixed(2),
+      prevClose:m.regularMarketPreviousClose||+(p/(1+chgPct/100)).toFixed(2),
+      w52hi:w.hi,w52lo:w.lo,live:true};
+  }catch(e){return null;}
+}
 async function fetchQ(sym){
   var c=getCached(sym);if(c)return c;
+  // Yahoo Finance – free, no key needed
+  if(!KEYS.fh&&!KEYS.av){
+    var yd=await fetchYahoo(sym);
+    if(yd){setCache(sym,yd);return yd;}
+  }
   if(KEYS.fh){
     try{
       var j=await(await fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(sym)+'&token='+KEYS.fh)).json();
@@ -1187,7 +1214,7 @@ function addPlaceholders(stocks,gridId){
 }
 async function loadGrid(stocks,gridId){
   addPlaceholders(stocks,gridId);
-  var dl=KEYS.av?1200:KEYS.fh?200:0;
+  var dl=KEYS.fh?200:KEYS.av?1200:150;
   for(var i=0;i<stocks.length;i++){
     try{
       var d=await fetchQ(stocks[i].symbol);
