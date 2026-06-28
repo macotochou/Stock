@@ -1592,25 +1592,34 @@ function setModalRange(range){
 }
 async function drawModalChart(sym,range,priceData){
   var ld=document.getElementById('m-chart-loading');
-  if(ld){ld.style.display='flex';}
-  var h=await fetchHistRange(sym,range);
-  if(ld){ld.style.display='none';}
-  var up=priceData.changePct>=0;
-  var col=up?'#10b981':'#ef4444';
-  var mCtx=document.getElementById('m-chart').getContext('2d');
-  if(mChart)mChart.destroy();
-  mChart=new Chart(mCtx,{
-    type:'line',
-    data:{labels:h.map(function(x){return x.date;}),datasets:[{data:h.map(function(x){return x.close;}),borderColor:col,borderWidth:2,fill:true,tension:.2,pointRadius:0,pointHoverRadius:4,backgroundColor:up?'rgba(16,185,129,.07)':'rgba(239,68,68,.07)'}]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return' $'+c.parsed.y.toFixed(2);}}}},
-      scales:{
-        x:{ticks:{color:'#4b5e7a',maxTicksLimit:8,font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
-        y:{ticks:{color:'#4b5e7a',font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}}
-      }
+  var mCtx=document.getElementById('m-chart');
+  if(ld){ld.style.display='flex';ld.textContent='Loading…';}
+  try{
+    var h=await fetchHistRange(sym,range);
+    if(!h||!h.length){
+      // No data (market closed for 1D, or no history)
+      if(ld){ld.style.display='flex';ld.textContent=range==='1D'?'No intraday data — market may be closed':'No data available';}
+      return;
     }
-  });
+    if(ld){ld.style.display='none';}
+    var up=priceData.changePct>=0;
+    var col=up?'#10b981':'#ef4444';
+    if(mChart)mChart.destroy();
+    mChart=new Chart(mCtx.getContext('2d'),{
+      type:'line',
+      data:{labels:h.map(function(x){return x.date;}),datasets:[{data:h.map(function(x){return x.close;}),borderColor:col,borderWidth:2,fill:true,tension:.2,pointRadius:range==='1D'?0:0,pointHoverRadius:4,backgroundColor:up?'rgba(16,185,129,.07)':'rgba(239,68,68,.07)'}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return' $'+c.parsed.y.toFixed(2);}}}},
+        scales:{
+          x:{ticks:{color:'#4b5e7a',maxTicksLimit:range==='1D'?6:8,font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
+          y:{ticks:{color:'#4b5e7a',font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}}
+        }
+      }
+    });
+  }catch(e){
+    if(ld){ld.style.display='flex';ld.textContent='Chart unavailable';}
+  }
 }
 // ── 5. CLOCK ─────────────────────────────────────────────────────
 function updateClock(){
