@@ -316,7 +316,7 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
       <option value="target_upside">Upside to Target &#8595;</option>
     </select>
     <span id="last-refresh" style="font-size:11px;color:var(--text3)"></span>
-    <button class="btn" onclick="pcache={};initDashboard()">&#8635; Refresh</button>
+    <button class="btn" onclick="pcache={};acache={};initDashboard()">&#8635; Refresh</button>
   </div>
   <div id="mj-card-slot" style="margin-bottom:8px"></div>
   <div id="tech-grid" class="stock-grid"></div>
@@ -327,7 +327,7 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
   <div id="indices-strip" class="indices-grid"></div>
   <div class="sh" style="margin-top:8px">
     <h2>Watchlist Stocks</h2>
-    <div class="acts"><button class="btn" onclick="pcache={};tabDone.watchlist=false;initWatchlist()">&#8635; Refresh</button></div>
+    <div class="acts"><button class="btn" onclick="pcache={};acache={};tabDone.watchlist=false;initWatchlist()">&#8635; Refresh</button></div>
   </div>
   <div id="watch-grid" class="stock-grid"></div>
 </div>
@@ -1046,6 +1046,70 @@ function getCached(s){var c=pcache[s];return(!c||Date.now()-c.ts>300000)?null:c.
 function setCache(s,d){pcache[s]={ts:Date.now(),data:d};}
 var KEYS={fh:localStorage.getItem('fh_key')||'',av:localStorage.getItem('av_key')||''};
 function activeAPI(){return KEYS.fh?'fh':KEYS.av?'av':'yahoo';}
+// ── Analyst cache (keyed by symbol) ──────────────────────────────
+var acache={};
+async function fetchAnalyst(sym){
+  if(acache[sym])return acache[sym];
+  if(!KEYS.fh)return null;
+  try{
+    var base='https://finnhub.io/api/v1';
+    var tk='&token='+KEYS.fh;
+    var [recR,ptR,mR]=await Promise.all([
+      fetch(base+'/stock/recommendation?symbol='+encodeURIComponent(sym)+tk),
+      fetch(base+'/stock/price-target?symbol='+encodeURIComponent(sym)+tk),
+      fetch(base+'/stock/metric?symbol='+encodeURIComponent(sym)+'&metric=all'+tk)
+    ]);
+    var rec=recR.ok?await recR.json():[];
+    var pt=ptR.ok?await ptR.json():{};
+    var met=mR.ok?await mR.json():{};
+    if(!rec||!rec.length)return null;
+    var r=rec[0];
+    var buy=(r.strongBuy||0)+(r.buy||0);
+    var hold=r.hold||0;
+    var sell=(r.strongSell||0)+(r.sell||0);
+    var total=buy+hold+sell;
+    if(!total)return null;
+    var bPct=buy/total;
+    var rating=bPct>=0.7?'Strong Buy':bPct>=0.55?'Buy':(sell/total)>=0.4?'Sell':'Hold';
+    var target=pt&&pt.targetMean?+pt.targetMean.toFixed(2):null;
+    var cap=null,pe=null,fwdPE=null;
+    if(met&&met.metric){
+      var mc=met.metric.marketCapitalization;
+      if(mc){cap=mc>=1000?(mc/1000).toFixed(1)+'T':mc>=1?mc.toFixed(0)+'B':(mc*1000).toFixed(0)+'M';}
+      pe=met.metric.peBasicExclExtraTTM?+met.metric.peBasicExclExtraTTM.toFixed(1):null;
+      fwdPE=met.metric.peFwdExclExtraTTM?+met.metric.peFwdExclExtraTTM.toFixed(1):null;
+    }
+    var result={buy:buy,hold:hold,sell:sell,total:total,rating:rating,target:target,cap:cap,pe:pe,fwdPE:fwdPE,live:true};
+    acache[sym]=result;
+    return result;
+  }catch(e){return null;}
+}
+function renderAnalystBlock(an,price,ab){
+  if(!an||!ab){if(ab)ab.innerHTML='';return;}
+  var total=an.buy+an.hold+an.sell;
+  var bPct=(an.buy/total*100).toFixed(0),hPct=(an.hold/total*100).toFixed(0),sPct=(an.sell/total*100).toFixed(0);
+  var upside=an.target?+(((an.target-price)/price)*100).toFixed(1):null;
+  ab.innerHTML='<div class="analyst-block">'
+    +'<div class="ab-hdr">&#128269; Analyst Consensus'+(an.live?' <span style="font-size:10px;color:var(--green);font-weight:400">&#9679; Live</span>':'')+'</div>'
+    +'<div class="ab-grid">'
+    +'<div class="ab-item"><div class="al">Rating</div><div class="av" style="color:'+(an.rating.includes('Strong')?'var(--green)':an.rating==='Hold'?'var(--yellow)':'var(--red)')+'">'+an.rating+'</div></div>'
+    +(an.target?'<div class="ab-item"><div class="al">Avg Target</div><div class="av">$'+an.target+'</div></div>':'')
+    +(upside!=null?'<div class="ab-item"><div class="al">Upside</div><div class="av" style="color:'+(upside>0?'var(--green)':'var(--red)')+'">'+(upside>0?'+':'')+upside+'%</div></div>':'')
+    +'<div class="ab-item"><div class="al">Analysts</div><div class="av">'+total+'</div></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:12px;margin-top:9px;font-size:11px">'
+    +'<span style="color:var(--green)">&#9650; '+an.buy+' Buy ('+bPct+'%)</span>'
+    +'<span style="color:var(--yellow)">&#9654; '+an.hold+' Hold ('+hPct+'%)</span>'
+    +'<span style="color:var(--red)">&#9660; '+an.sell+' Sell ('+sPct+'%)</span>'
+    +'</div>'
+    +'<div class="rating-bar" style="margin-top:6px">'
+    +'<div class="rb-buy" style="width:'+bPct+'%"></div>'
+    +'<div class="rb-hold" style="width:'+hPct+'%"></div>'
+    +'<div class="rb-sell" style="width:'+sPct+'%"></div>'
+    +'</div>'
+    +((an.cap||an.pe||an.fwdPE)?'<div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text2)">'+(an.cap?'<span>Market Cap: <b style="color:var(--text)">'+an.cap+'</b></span>':'')+(an.pe?'<span>P/E: <b style="color:var(--text)">'+an.pe+'x</b></span>':'')+(an.fwdPE?'<span>Fwd P/E: <b style="color:var(--text)">'+an.fwdPE+'x</b></span>':'')+'</div>':'')
+    +'</div>';
+}
 // ── 4. FETCH ─────────────────────────────────────────────────────
 async function fetchYahoo(sym){
   try{
@@ -1669,33 +1733,19 @@ async function openModal(sym){
     {l:'Open',v:fmtP(d.open,sym)},{l:'High',v:fmtP(d.high,sym)},
     {l:'Low',v:fmtP(d.low,sym)},{l:'Prev Close',v:fmtP(d.prevClose,sym)},
   ].map(function(x){return '<div class="ms"><div class="ml">'+x.l+'</div><div class="mv">'+x.v+'</div></div>';}).join('');
-  var an=ANALYST[sym];
   var ab=document.getElementById('analyst-block');
-  if(an&&ab){
-    var total=an.buy+an.hold+an.sell;
-    var bPct=(an.buy/total*100).toFixed(0),hPct=(an.hold/total*100).toFixed(0),sPct=(an.sell/total*100).toFixed(0);
-    var upside=+(((an.target-d.price)/d.price)*100).toFixed(1);
-    ab.innerHTML='<div class="analyst-block">'
-      +'<div class="ab-hdr">&#128269; Analyst Consensus</div>'
-      +'<div class="ab-grid">'
-      +'<div class="ab-item"><div class="al">Rating</div><div class="av" style="color:'+(an.rating.includes('Strong')?'var(--green)':an.rating==='Hold'?'var(--yellow)':'var(--red)')+'">'+an.rating+'</div></div>'
-      +'<div class="ab-item"><div class="al">Avg Target</div><div class="av">$'+an.target+'</div></div>'
-      +'<div class="ab-item"><div class="al">Upside</div><div class="av" style="color:'+(upside>0?'var(--green)':'var(--red)')+'">'+(upside>0?'+':'')+upside+'%</div></div>'
-      +'<div class="ab-item"><div class="al">Analysts</div><div class="av">'+total+'</div></div>'
-      +'</div>'
-      +'<div style="display:flex;gap:12px;margin-top:9px;font-size:11px">'
-      +'<span style="color:var(--green)">&#9650; '+an.buy+' Buy ('+bPct+'%)</span>'
-      +'<span style="color:var(--yellow)">&#9654; '+an.hold+' Hold ('+hPct+'%)</span>'
-      +'<span style="color:var(--red)">&#9660; '+an.sell+' Sell ('+sPct+'%)</span>'
-      +'</div>'
-      +'<div class="rating-bar" style="margin-top:6px">'
-      +'<div class="rb-buy" style="width:'+bPct+'%"></div>'
-      +'<div class="rb-hold" style="width:'+hPct+'%"></div>'
-      +'<div class="rb-sell" style="width:'+sPct+'%"></div>'
-      +'</div>'
-      +(an.pe||an.fwdPE?'<div style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text2)"><span>Market Cap: <b style="color:var(--text)">'+an.cap+'</b></span>'+(an.pe?'<span>P/E: <b style="color:var(--text)">'+an.pe+'x</b></span>':'')+(an.fwdPE?'<span>Fwd P/E: <b style="color:var(--text)">'+an.fwdPE+'x</b></span>':'')+'</div>':'')
-      +'</div>';
-  }else if(ab){ab.innerHTML='';}
+  // Show static fallback immediately, then overwrite with live data
+  var anStatic=ANALYST[sym];
+  if(anStatic&&ab){renderAnalystBlock(anStatic,d.price,ab);}
+  else if(ab){ab.innerHTML='<div class="analyst-block" style="color:var(--text2);font-size:12px">Loading analyst data…</div>';}
+  // Fetch live analyst data from Finnhub (async, updates block when ready)
+  if(KEYS.fh){
+    fetchAnalyst(sym).then(function(anLive){
+      if(anLive){renderAnalystBlock(anLive,d.price,ab);}
+      else if(anStatic){renderAnalystBlock(anStatic,d.price,ab);}
+      else if(ab){ab.innerHTML='';}
+    });
+  }
   document.getElementById('m-tags').innerHTML=
     '<span style="padding:3px 8px;background:var(--card2);border-radius:4px;font-size:12px;color:var(--text2)">'+(s.sector||'Stock')+'</span> '
     +(d.live?'<span style="padding:3px 8px;background:rgba(16,185,129,.1);border-radius:4px;font-size:12px;color:var(--green)">&#9679; Live Data</span>':'<span style="padding:3px 8px;background:rgba(245,158,11,.1);border-radius:4px;font-size:12px;color:var(--yellow)">Demo Prices</span>');
