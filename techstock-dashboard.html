@@ -1491,11 +1491,24 @@ function renderAnalystBlock(an,price,ab){
     +'</div>';
 }
 // ── 4. FETCH ─────────────────────────────────────────────────────
+// ── Yahoo crumb (required since 2024) ──────────────────────────────
+var _yCrumb=null,_yCrumbTs=0;
+async function getYahooCrumb(){
+  var now=Date.now();
+  if(_yCrumb&&now-_yCrumbTs<3600000)return _yCrumb; // reuse for 1 hour
+  try{
+    var r=await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb',{credentials:'include'});
+    if(r.ok){var t=await r.text();if(t&&t.length<50&&t!==''){_yCrumb=t.trim();_yCrumbTs=now;return _yCrumb;}}
+  }catch(e){}
+  return null;
+}
 async function fetchYahoo(sym){
+  var crumb=await getYahooCrumb();
   // Try v7/quote first (richer: pre/post market, 52W range)
   try{
-    var url7='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(sym)+'&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,regularMarketPreviousClose,fiftyTwoWeekHigh,fiftyTwoWeekLow,preMarketPrice,preMarketChange,preMarketChangePercent,postMarketPrice,postMarketChange,postMarketChangePercent';
-    var r7=await fetch(url7);
+    var crumbQ=crumb?'&crumb='+encodeURIComponent(crumb):'';
+    var url7='https://query2.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(sym)+'&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,regularMarketPreviousClose,fiftyTwoWeekHigh,fiftyTwoWeekLow,preMarketPrice,preMarketChange,preMarketChangePercent,postMarketPrice,postMarketChange,postMarketChangePercent'+crumbQ;
+    var r7=await fetch(url7,{credentials:'include'});
     if(r7.ok){
       var j7=await r7.json();
       var q=j7.quoteResponse&&j7.quoteResponse.result&&j7.quoteResponse.result[0];
@@ -1504,8 +1517,9 @@ async function fetchYahoo(sym){
   }catch(e){}
   // Fallback to v8/chart (wider CORS support)
   try{
-    var url8='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1d&includePrePost=true';
-    var r8=await fetch(url8);if(!r8.ok)return null;
+    var crumbQ2=crumb?'&crumb='+encodeURIComponent(crumb):'';
+    var url8='https://query2.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1d&includePrePost=true'+crumbQ2;
+    var r8=await fetch(url8,{credentials:'include'});if(!r8.ok)return null;
     var j8=await r8.json();
     var res=j8.chart&&j8.chart.result&&j8.chart.result[0];
     if(!res||!res.meta)return null;
@@ -1547,12 +1561,14 @@ function _yqToData(q){
 async function fetchYahooBatch(symbols){
   try{
     if(!symbols||!symbols.length)return;
-    var url='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+symbols.map(encodeURIComponent).join(',')+'&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,regularMarketPreviousClose,fiftyTwoWeekHigh,fiftyTwoWeekLow,preMarketPrice,preMarketChange,preMarketChangePercent,postMarketPrice,postMarketChange,postMarketChangePercent';
-    var r=await fetch(url);if(!r.ok)return;
+    var crumb=await getYahooCrumb();
+    var crumbQ=crumb?'&crumb='+encodeURIComponent(crumb):'';
+    var url='https://query2.finance.yahoo.com/v7/finance/quote?symbols='+symbols.map(encodeURIComponent).join(',')+'&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,regularMarketPreviousClose,fiftyTwoWeekHigh,fiftyTwoWeekLow,preMarketPrice,preMarketChange,preMarketChangePercent,postMarketPrice,postMarketChange,postMarketChangePercent'+crumbQ;
+    var r=await fetch(url,{credentials:'include'});if(!r.ok)return;
     var j=await r.json();
     var results=j.quoteResponse&&j.quoteResponse.result||[];
     results.forEach(function(q){if(q.regularMarketPrice)setCache(q.symbol,_yqToData(q));});
-    console.log('[Batch] Fetched '+results.length+'/'+symbols.length+' symbols');
+    console.log('[Batch] Fetched '+results.length+'/'+symbols.length+' symbols via Yahoo');
   }catch(e){console.warn('fetchYahooBatch err',e);}
 }
 async function fetchQ(sym){
@@ -2904,3 +2920,4 @@ function populateDatalist(){
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
