@@ -652,6 +652,7 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
       <button class="range-btn" onclick="setModalRange('10Y')">10Y</button>
       <button class="range-btn" onclick="setModalRange('ALL')">ALL</button>
     </div>
+    <div id="m-chart-date-note" style="display:none;font-size:10px;color:var(--yellow);text-align:right;margin-bottom:3px;padding-right:4px">Last trading day (market closed)</div>
     <div style="height:230px;margin-bottom:12px;position:relative"><canvas id="m-chart"></canvas><div id="m-chart-loading" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;color:var(--text3);font-size:13px">Loading…</div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="m-tags"></div>
     <button class="btn pri" style="width:100%" onclick="prefillTrade()">Trade This Stock &rarr;</button>
@@ -1559,8 +1560,42 @@ async function fetchHistRange(sym,range){
   var ttl=range==='1D'?900000:3600000;
   if(hrcache[ck]&&Date.now()-hrcache[ck].ts<ttl)return hrcache[ck].data;
   var data=null;
-  // Try Yahoo Finance (free, no key, supports all ranges)
-  try{
+  // For 1D: fetch 5d intraday and extract only the LAST trading day's data
+  // This works on weekends (shows Friday) and live days (shows today)
+  if(range==='1D'){
+    try{
+      var r1d=await fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=5m&range=5d&includePrePost=false');
+      if(r1d.ok){
+        var j1d=await r1d.json();
+        var res1d=j1d.chart&&j1d.chart.result&&j1d.chart.result[0];
+        if(res1d&&res1d.timestamp){
+          var ts1d=res1d.timestamp,cls1d=res1d.indicators&&res1d.indicators.quote&&res1d.indicators.quote[0]&&res1d.indicators.quote[0].close;
+          if(cls1d){
+            // Find the latest date in the data (last trading day)
+            var latestDate='';
+            for(var i=0;i<ts1d.length;i++){
+              if(cls1d[i]==null)continue;
+              var ds=new Date(ts1d[i]*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
+              if(ds>latestDate)latestDate=ds;
+            }
+            if(latestDate){
+              data=[];
+              for(var i=0;i<ts1d.length;i++){
+                if(cls1d[i]==null)continue;
+                var dt1d=new Date(ts1d[i]*1000);
+                if(dt1d.toLocaleDateString('en-CA',{timeZone:'America/New_York'})===latestDate){
+                  data.push({date:dt1d.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}),close:+cls1d[i].toFixed(2)});
+                }
+              }
+              if(!data.length)data=null;
+            }
+          }
+        }
+      }
+    }catch(e){}
+  }
+  // Try Yahoo Finance for all other ranges (and 1D fallback)
+  if(!data)try{
     var yr=YAHOO_RANGES[range]||YAHOO_RANGES['3M'];
     var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval='+yr.interval+'&range='+yr.range+'&includePrePost=false';
     var r=await fetch(url);
@@ -1602,8 +1637,8 @@ async function fetchHistRange(sym,range){
       }
     }catch(e){}
   }
-  // Fallback: demo
-  if(!data)data=demoHist(sym,DEMO_DAYS[range]||90);
+  // Fallback: demo (use 14 days for 1D so weekend fallback has trading days)
+  if(!data)data=demoHist(sym,range==='1D'?14:DEMO_DAYS[range]||90);
   hrcache[ck]={ts:Date.now(),data:data};
   return data;
 }
@@ -1626,12 +1661,27 @@ async function drawModalChart(sym,range,priceData){
       return;
     }
     if(ld){ld.style.display='none';}
+    // For 1D on weekends, show which date's data we're displaying
+    var chartDateNote=document.getElementById('m-chart-date-note');
+    if(range==='1D'&&chartDateNote){
+      var now=new Date(),dow=now.toLocaleDateString('en-US',{timeZone:'America/New_York',weekday:'short'});
+      var isWknd=dow==='Sat'||dow==='Sun';
+      if(isWknd){
+        // Find date from data labels - if time format we need to show a date note
+        chartDateNote.textContent='Last trading day (market closed)';
+        chartDateNote.style.display='block';
+      } else {
+        chartDateNote.style.display='none';
+      }
+    } else if(chartDateNote){
+      chartDateNote.style.display='none';
+    }
     var up=priceData.changePct>=0;
     var col=up?'#10b981':'#ef4444';
     if(mChart)mChart.destroy();
     mChart=new Chart(mCtx.getContext('2d'),{
       type:'line',
-      data:{labels:h.map(function(x){return x.date;}),datasets:[{data:h.map(function(x){return x.close;}),borderColor:col,borderWidth:2,fill:true,tension:.2,pointRadius:range==='1D'?0:0,pointHoverRadius:4,backgroundColor:up?'rgba(16,185,129,.07)':'rgba(239,68,68,.07)'}]},
+      data:{labels:h.map(function(x){return x.date;}),datasets:[{data:h.map(function(x){return x.close;}),borderColor:col,borderWidth:2,fill:true,tension:.2,pointRadius:0,pointHoverRadius:4,backgroundColor:up?'rgba(16,185,129,.07)':'rgba(239,68,68,.07)'}]},
       options:{
         responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return' $'+c.parsed.y.toFixed(2);}}}},
