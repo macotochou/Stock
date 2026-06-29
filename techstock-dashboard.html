@@ -962,16 +962,37 @@ async function mjAddNote(){
 
 // ── Trade ──────────────────────────────────────────────────────
 async function mjTrade(action){
-  var who=mjWhoAmI()||'her';
+  var who=mjWhoAmI();
+  if(!who){toast('Set your role (Her/Him) in Settings first','error');return;}
   var d=mjLoadLocal(),today=new Date().toISOString().slice(0,10);
-  var combo=mjGetCombo(d,today)||50;
+  // BUY/SELL actually change your score (+10/-10)
+  d.scores=d.scores||{her:{},him:{}};
+  d.scores[who]=d.scores[who]||{};
+  var cur=d.scores[who][today]!==undefined?d.scores[who][today]:50;
+  var delta=action==='BUY'?10:action==='SELL'?-10:0;
+  var newScore=Math.min(100,Math.max(0,cur+delta));
+  d.scores[who][today]=newScore;
+  var combo=mjGetCombo(d,today)||newScore;
   d.trades=d.trades||[];
-  var trade={date:today,action:action,price:combo,time:new Date().toLocaleTimeString(),by:who};
+  var trade={date:today,action:action,score:newScore,combo:combo,time:new Date().toLocaleTimeString(),by:who};
   d.trades.unshift(trade);
   if(d.trades.length>50)d.trades=d.trades.slice(0,50);
   mjSaveLocal(d);
-  if(fbURL()){try{await fbWrite('mj/trades',d.trades);}catch(e){}}
+  // Write both score and trades to Firebase
+  if(fbURL()){
+    try{
+      await Promise.all([
+        fbWrite('mj/scores/'+who+'/'+today,newScore),
+        fbWrite('mj/trades',d.trades)
+      ]);
+    }catch(e){}
+  }
+  // Update my score display
+  var myVal=document.getElementById('mj-my-val');
+  if(myVal)myVal.textContent=newScore;
+  toast(action+' '+(delta>0?'+'+delta:delta===0?'±0':delta)+' → Score: '+newScore+' ♥','success');
   mjRenderTradeLog(d.trades);renderMJCard();
+  mjRenderFromLocal();
 }
 
 // ── Render helpers ─────────────────────────────────────────────
@@ -1010,7 +1031,9 @@ function mjRenderTradeLog(trades){
   if(!trades||!trades.length){tl.innerHTML='<div style="color:rgba(255,105,180,.3);padding:10px 0;text-align:center;font-size:11px">No trades yet</div>';return;}
   tl.innerHTML=trades.map(function(t){
     var c=t.action==='BUY'?'#ff6fa3':t.action==='SELL'?'#818cf8':'#c084fc';
-    return '<div class="mj-log-item"><span style="color:'+c+';font-weight:700;min-width:36px">'+t.action+'</span><span style="color:rgba(255,255,255,.7)">@'+t.price+'</span><span style="color:rgba(255,255,255,.4)">'+t.date+'</span><span style="color:rgba(255,255,255,.3)">'+t.time+'</span>'+(t.by?'<span style="color:rgba(255,105,180,.4);font-size:10px">'+t.by+'</span>':'')+'</div>';
+    var delta=t.action==='BUY'?'+10':t.action==='SELL'?'-10':'±0';
+    var scoreStr=t.score!==undefined?(' → '+t.score):'';
+    return '<div class="mj-log-item"><span style="color:'+c+';font-weight:700;min-width:36px">'+t.action+'</span><span style="color:'+c+';font-size:11px">'+delta+scoreStr+'</span><span style="color:rgba(255,255,255,.4);font-size:10px">'+t.date+'</span><span style="color:rgba(255,255,255,.3);font-size:10px">'+t.time+'</span>'+(t.by?'<span style="color:rgba(255,105,180,.4);font-size:10px">'+t.by+'</span>':'')+'</div>';
   }).join('');
 }
 
@@ -1326,6 +1349,7 @@ function demoHist(sym,days){
     var dt=new Date(now-d*86400000);
     if(dt.getDay()!==0&&dt.getDay()!==6) res.push({date:dt.toISOString().slice(0,10),close:+p.toFixed(2)});
   }
+  if(!res.length)return[];
   var sc=base/res[res.length-1].close;
   return res.map(function(x){return{date:x.date,close:+(x.close*sc).toFixed(2)};});
 }
