@@ -660,11 +660,9 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <div id="m-chart-date-note" style="display:none;font-size:10px;color:var(--yellow)">Last trading day (market closed)</div>
       <div style="display:flex;gap:3px;margin-left:auto" id="ma-toggle-bar">
-        <span style="font-size:10px;color:var(--text3);align-self:center;margin-right:3px">MA</span>
-        <button id="ma-btn-5"  onclick="toggleMA(5)"   style="background:#f59e0b;border:1px solid #f59e0b;color:#000;font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit;font-weight:700">5</button>
-        <button id="ma-btn-20" onclick="toggleMA(20)"  style="background:#a78bfa;border:1px solid #a78bfa;color:#000;font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit;font-weight:700">20</button>
-        <button id="ma-btn-50" onclick="toggleMA(50)"  style="background:var(--card2);border:1px solid var(--border);color:var(--text2);font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit">50</button>
-        <button id="ma-btn-200" onclick="toggleMA(200)" style="background:var(--card2);border:1px solid var(--border);color:var(--text2);font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit">200</button>
+        <button id="ov-btn-volume" onclick="toggleOverlay('volume')" style="background:#64748b;border:1px solid #64748b;color:#000;font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit;font-weight:700">Vol</button>
+        <button id="ov-btn-sr"     onclick="toggleOverlay('sr')"     style="background:#f97316;border:1px solid #f97316;color:#000;font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit;font-weight:700">S/R</button>
+        <button id="ov-btn-trend"  onclick="toggleOverlay('trend')"  style="background:#06b6d4;border:1px solid #06b6d4;color:#000;font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;transition:.15s;font-family:inherit;font-weight:700">Trend</button>
       </div>
     </div>
     <div style="height:230px;margin-bottom:12px;position:relative"><canvas id="m-chart"></canvas><div id="m-chart-loading" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;color:var(--text3);font-size:13px">Loading…</div></div>
@@ -677,7 +675,7 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
 <script>
 
 // ===================== TECH SIGNALS DATA =====================
-var TS={NVDA:{rsi:52,macd:'Cross Up',trend:'Uptrend',signal:'BUY',ma50:175.40,ma200:145.80},AAPL:{rsi:58,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:280.50,ma200:245.20},GOOG:{rsi:55,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:315.20,ma200:280.40},TSM:{rsi:47,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:420.80,ma200:380.50},AVGO:{rsi:58,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:340.20,ma200:290.10},AMD:{rsi:64,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:480.30,ma200:385.70},INTC:{rsi:35,macd:'Bearish',trend:'Downtrend',signal:'SELL',ma50:135.20,ma200:155.40},QCOM:{rsi:38,macd:'Cross Dn',trend:'Downtrend',signal:'SELL',ma50:205.40,ma200:185.20},ARM:{rsi:53,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:320.80,ma200:275.40},MRVL:{rsi:55,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:260.00,ma200:225.80},META:{rsi:48,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:540.20,ma200:495.80},AMZN:{rsi:50,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:235.80,ma200:210.40},MSFT:{rsi:44,macd:'Bearish',trend:'Sideways',signal:'HOLD',ma50:365.20,ma200:345.80},PLTR:{rsi:62,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:95.40,ma200:72.80},IONQ:{rsi:71,macd:'Overbought',trend:'Surge',signal:'CAUTION',ma50:38.50,ma200:28.40},QBTS:{rsi:45,macd:'Neutral',trend:'Volatile',signal:'HOLD',ma50:30.20,ma200:22.80},MU:{rsi:68,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:205.40,ma200:168.80},ALAB:{rsi:64,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:148.20,ma200:115.40},CSCO:{rsi:45,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:84.50,ma200:79.20},NET:{rsi:56,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:165.40,ma200:140.80},NOW:{rsi:54,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:1480.20,ma200:1350.80},SMCI:{rsi:78,macd:'Overbought',trend:'Sharp Up',signal:'CAUTION',ma50:35.80,ma200:28.40},CRWD:{rsi:61,macd:'Bullish',trend:'Uptrend',signal:'BUY',ma50:355.20,ma200:310.80},PANW:{rsi:75,macd:'Overbought',trend:'Strong Up',signal:'CAUTION',ma50:220.40,ma200:175.80},LRCX:{rsi:46,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:975.20,ma200:885.40},AMAT:{rsi:43,macd:'Neutral',trend:'Sideways',signal:'HOLD',ma50:225.80,ma200:210.40}};
+var TS={}; // populated live from price history
 var OPT=[{sym:'NVDA',pc:0.84,iv:42.3,ivPct:49,sentiment:'Bullish',unusual:'$12.4M Jul $210 Calls'},{sym:'AMD',pc:0.92,iv:48.1,ivPct:62,sentiment:'Bullish',unusual:'$8.2M Aug $580 Calls'},{sym:'SMCI',pc:1.45,iv:82.4,ivPct:88,sentiment:'Mixed',unusual:'$5.1M Jul $50 Puts'},{sym:'IONQ',pc:0.78,iv:95.2,ivPct:72,sentiment:'Bullish',unusual:'$3.8M Aug $55 Calls'},{sym:'QCOM',pc:1.32,iv:35.8,ivPct:78,sentiment:'Bearish',unusual:'$7.4M Jul $175 Puts'},{sym:'MU',pc:0.71,iv:38.5,ivPct:44,sentiment:'Bullish',unusual:'$9.1M Aug $255 Calls'},{sym:'CRWD',pc:0.88,iv:40.2,ivPct:38,sentiment:'Bullish',unusual:'$6.8M Jul $400 Calls'},{sym:'PANW',pc:0.95,iv:34.7,ivPct:52,sentiment:'Neutral',unusual:'$4.2M Aug $260 Calls'},{sym:'META',pc:1.12,iv:28.4,ivPct:35,sentiment:'Neutral',unusual:'$11.2M Jul $570 Puts'},{sym:'AVGO',pc:0.76,iv:32.8,ivPct:42,sentiment:'Bullish',unusual:'$8.9M Jul $380 Calls'}];
 var INS=[{date:'Jun 16',sym:'NVDA',name:'Jensen Huang',role:'CEO',type:'SALE',shares:'285K',value:'$54.7M',note:'10b5-1'},{date:'Jun 12',sym:'NVDA',name:'Colette Kress',role:'CFO',type:'SALE',shares:'150K',value:'$28.8M',note:'10b5-1'},{date:'Jun 8',sym:'META',name:'Mark Zuckerberg',role:'CEO',type:'SALE',shares:'200K',value:'$110.8M',note:'Planned'},{date:'Jun 5',sym:'PLTR',name:'Alex Karp',role:'CEO',type:'SALE',shares:'500K',value:'$53.6M',note:'10b5-1'},{date:'Jun 3',sym:'AMZN',name:'Andy Jassy',role:'CEO',type:'SALE',shares:'80K',value:'$19.6M',note:'10b5-1'},{date:'Jun 2',sym:'AMD',name:'Lisa Su',role:'CEO',type:'SALE',shares:'100K',value:'$52.2M',note:'10b5-1'},{date:'May 28',sym:'MSFT',name:'Satya Nadella',role:'CEO',type:'SALE',shares:'75K',value:'$26.5M',note:'10b5-1'},{date:'May 22',sym:'NET',name:'Matthew Prince',role:'CEO',type:'PURCHASE',shares:'50K',value:'$8.9M',note:'Open Market'},{date:'May 20',sym:'CRWD',name:'George Kurtz',role:'CEO',type:'PURCHASE',shares:'30K',value:'$11.4M',note:'Open Market'}];
 var AC=[{date:'Jun 27',sym:'NVDA',firm:'China Renaissance',action:'Initiate Buy',pt:319,cls:'ac-new'},{date:'Jun 25',sym:'QCOM',firm:'UBS',action:'Downgrade Neutral',pt:185,cls:'ac-dn'},{date:'Jun 24',sym:'IONQ',firm:'HC Wainwright',action:'PT Raise $53',pt:53,cls:'ac-up'},{date:'Jun 23',sym:'PANW',firm:'Piper Sandler',action:'PT Raise $270',pt:270,cls:'ac-up'},{date:'Jun 20',sym:'SMCI',firm:'Rosenblatt',action:'Upgrade Buy',pt:55,cls:'ac-up'},{date:'Jun 19',sym:'MU',firm:'Multiple Firms',action:'PT Raise $145',pt:145,cls:'ac-up'},{date:'Jun 18',sym:'MSFT',firm:'Stifel',action:'PT Cut $400',pt:400,cls:'ac-dn'},{date:'Jun 16',sym:'ALAB',firm:'Raymond James',action:'PT Raise $125',pt:125,cls:'ac-up'},{date:'Jun 14',sym:'MRVL',firm:'Barclays',action:'PT Raise $140',pt:140,cls:'ac-up'},{date:'Jun 10',sym:'AVGO',firm:'Morgan Stanley',action:'Top Pick OW',pt:285,cls:'ac-new'},{date:'Jun 5',sym:'AMD',firm:'Citi',action:'PT Raise $185',pt:185,cls:'ac-up'},{date:'Jun 2',sym:'META',firm:'Wells Fargo',action:'Downgrade EW',pt:560,cls:'ac-dn'}];
@@ -1376,7 +1374,9 @@ var REAL_DC={NVDA:-1.64,AAPL:3.14,GOOG:-2.19,SPCX:0.15,TSLA:1.22,TSM:-0.61,
   MSFT:5.71,CSCO:-4.37,NET:4.67,'2454.TW':-9.98,'000660.KS':-8.36,'005930.KS':-5.30,
   JPM:-1.81,V:1.73,MA:2.07,IBM:5.17,QBTS:3.88,IONQ:-2.47,NOW:9.85,WDAY:9.18,
   AAOI:-2.06,COHR:-6.55,LITE:-5.22,MDA:-1.11,PLTR:5.28};
-function demoPct(sym){if(REAL_DC[sym]!==undefined)return REAL_DC[sym];
+function demoPct(sym){
+  var c=pcache[sym];if(c&&c.data&&c.data.changePct!==undefined)return c.data.changePct;
+  if(REAL_DC[sym]!==undefined)return REAL_DC[sym];
   var h=0;for(var i=0;i<sym.length;i++) h=(h*31+sym.charCodeAt(i))&0xffffff;
   return +(((h%601)-300)/100).toFixed(2);
 }
@@ -1678,7 +1678,8 @@ async function fetchHistRange(sym,range){
             var lbl=isMin?
               dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}):
               (yr.interval==='1mo'?dt.toISOString().slice(0,7):dt.toISOString().slice(0,10));
-            data.push({date:lbl,close:+cls[i].toFixed(2)});
+            var vol=res.indicators.quote[0].volume;var hi=res.indicators.quote[0].high;var lo=res.indicators.quote[0].low;
+            data.push({date:lbl,close:+cls[i].toFixed(2),volume:vol?vol[i]||0:0,high:hi?+(hi[i]||cls[i]).toFixed(2):null,low:lo?+(lo[i]||cls[i]).toFixed(2):null});
           }
           if(!data.length)data=null;
         }
@@ -1696,7 +1697,7 @@ async function fetchHistRange(sym,range){
         data=j2.t.map(function(t,i){
           var dt2=new Date(t*1000);
           var lbl2=isMin2?dt2.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hour12:false}):dt2.toISOString().slice(0,10);
-          return{date:lbl2,close:+j2.c[i].toFixed(2)};
+          return{date:lbl2,close:+j2.c[i].toFixed(2),volume:j2.v?j2.v[i]||0:0,high:j2.h?+j2.h[i].toFixed(2):null,low:j2.l?+j2.l[i].toFixed(2):null};
         });
         if(!data.length)data=null;
       }
@@ -1745,27 +1746,48 @@ async function drawModalChart(sym,range,priceData){
     var col=up?'#10b981':'#ef4444';
     var closes=h.map(function(x){return x.close;});
     var labels=h.map(function(x){return x.date;});
-    // Build datasets: price line + active MA overlays
+    // Compute live indicators from price history
+    if(closes.length>=30){
+      var ind=computeIndicators(closes,priceData?priceData.price:null);
+      if(ind){
+        TS[sym]=ind;
+        var tb=document.getElementById('m-tech-block');
+        if(tb){
+          tb.innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;padding:8px;background:var(--bg2);border-radius:7px">'
+            +'<div style="font-size:11px;color:var(--text3)">RSI&nbsp;'+rsiGaugeSVG(ind.rsi)+'</div>'
+            +'<div style="font-size:11px;font-weight:700;color:'+(ind.signal==='BUY'?'var(--green)':ind.signal==='SELL'?'var(--red)':'var(--yellow)')+'">'+ind.signal+'</div>'
+            +'<div style="font-size:11px;color:var(--text2)">'+ind.macd+' · '+ind.trend+'</div>'
+            +(ind.ma50?'<div style="font-size:11px;color:var(--text3)">MA50 $'+ind.ma50+(ind.ma200?' MA200 $'+ind.ma200:'')+'</div>':'')
+            +'<span style="font-size:9px;color:var(--green);opacity:.7">● live</span>'
+            +'</div>';
+        }
+      }
+    }
+    // Build datasets: price line
     var datasets=[{
       label:'Price',data:closes,borderColor:col,borderWidth:2,fill:true,tension:.2,
       pointRadius:0,pointHoverRadius:4,backgroundColor:up?'rgba(16,185,129,.07)':'rgba(239,68,68,.07)'
     }];
-    var maConfig=[
-      {period:5,   color:'#f59e0b', key:'ma5'},
-      {period:20,  color:'#a78bfa', key:'ma20'},
-      {period:50,  color:'#00c8ff', key:'ma50'},
-      {period:200, color:'#fb923c', key:'ma200'}
-    ];
-    maConfig.forEach(function(mc){
-      if(!maState[mc.key])return;
-      if(closes.length<mc.period)return; // not enough data
-      var maData=calcMA(closes,mc.period);
-      datasets.push({
-        label:'MA'+mc.period,data:maData,borderColor:mc.color,borderWidth:1.5,
-        fill:false,tension:.2,pointRadius:0,pointHoverRadius:0,
-        borderDash:mc.period>=200?[6,3]:undefined,spanGaps:false
+    // ── S/R Levels ──
+    if(chartOverlays.sr&&closes.length>=20&&range!=='1D'){
+      var srLvls=findSRLevels(closes,priceData?priceData.price:closes[closes.length-1]);
+      srLvls.resistance.slice(0,2).forEach(function(lvl){
+        datasets.push({label:'R $'+lvl,data:Array(closes.length).fill(lvl),borderColor:'rgba(239,100,60,0.8)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,borderDash:[6,4],order:5});
       });
-    });
+      srLvls.support.slice(0,2).forEach(function(lvl){
+        datasets.push({label:'S $'+lvl,data:Array(closes.length).fill(lvl),borderColor:'rgba(16,185,129,0.8)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,borderDash:[6,4],order:5});
+      });
+    }
+    // ── Trend Lines ──
+    if(chartOverlays.trend&&closes.length>=20&&range!=='1D'){
+      var tl=findTrendLines(closes);
+      if(tl.uptrend)datasets.push({label:'Uptrend',data:tl.uptrend,borderColor:'rgba(6,182,212,0.85)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,borderDash:[4,3],order:4});
+      if(tl.downtrend)datasets.push({label:'Downtrend',data:tl.downtrend,borderColor:'rgba(168,85,247,0.85)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,borderDash:[4,3],order:4});
+    }
+    // ── Volume bars ──
+    var volumes=h.map(function(x){return x.volume||0;});
+    var hasVol=chartOverlays.volume&&volumes.some(function(v){return v>0;});
+    if(hasVol)datasets.push({label:'Volume',data:volumes,type:'bar',backgroundColor:'rgba(100,116,139,0.22)',borderColor:'transparent',yAxisID:'yVol',order:10});
     if(mChart)mChart.destroy();
     mChart=new Chart(mCtx.getContext('2d'),{
       type:'line',
@@ -1774,12 +1796,14 @@ async function drawModalChart(sym,range,priceData){
         responsive:true,maintainAspectRatio:false,
         interaction:{mode:'index',intersect:false},
         plugins:{
-          legend:{display:datasets.length>1,labels:{color:'#94a3b8',font:{size:10},boxWidth:12,padding:8}},
-          tooltip:{callbacks:{label:function(c){return' '+c.dataset.label+': $'+c.parsed.y.toFixed(2);}}}
+          legend:{display:datasets.length>1,labels:{color:'#94a3b8',font:{size:10},boxWidth:12,padding:8,filter:function(item){return item.text!=='Volume';}}},
+          tooltip:{callbacks:{label:function(c){if(c.dataset.yAxisID==='yVol')return' Vol: '+Number(c.parsed.y).toLocaleString();return' '+c.dataset.label+': $'+c.parsed.y.toFixed(2);}}}
         },
         scales:{
           x:{ticks:{color:'#4b5e7a',maxTicksLimit:range==='1D'?6:8,font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
-          y:{ticks:{color:'#4b5e7a',font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}}
+          y:{ticks:{color:'#4b5e7a',font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
+          yVol:{display:hasVol,position:'right',grid:{display:false},ticks:{display:false},
+            max:hasVol?Math.max.apply(null,volumes)*5:undefined,min:0}
         }
       }
     });
@@ -2575,15 +2599,7 @@ async function openModal(sym){
       })()],
     ].map(function(x){return '<div class="stat-box"><div class="lbl">'+x[0]+'</div><div class="val">'+x[1]+'</div></div>';}).join('')
     +'<div style="grid-column:1/-1;margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:3px"><span>52W Lo $'+fmtP(w.lo,sym)+'</span><span>'+pct52.toFixed(0)+'%</span><span>Hi $'+fmtP(w.hi,sym)+'</span></div><div class="w52-track"><div class="w52-thumb" style="left:'+Math.min(99,Math.max(0,pct52))+'%"></div></div></div>';
-    if(TS[sym]){
-      var ts=TS[sym];
-      document.getElementById('m-tech-block').innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;padding:8px;background:var(--bg2);border-radius:7px">'
-        +'<div style="font-size:11px;color:var(--text3)">RSI&nbsp;'+rsiGaugeSVG(ts.rsi)+'</div>'
-        +'<div style="font-size:11px;font-weight:700;color:'+(ts.signal==='BUY'?'var(--green)':ts.signal==='SELL'?'var(--red)':'var(--yellow)')+'">'+ts.signal+'</div>'
-        +'<div style="font-size:11px;color:var(--text2)">'+ts.macd+' · '+ts.trend+'</div>'
-        +'<div style="font-size:11px;color:var(--text3)">MA50 $'+ts.ma50+' MA200 $'+ts.ma200+'</div>'
-        +'</div>';
-    }
+    // TS block now computed live inside drawModalChart
     fetchAnalyst(sym).then(function(a){
       if(!a)return;
       var el=document.getElementById('analyst-block');if(!el)return;
@@ -2614,11 +2630,24 @@ function closeModal(e){
 // ── 21. SETTINGS ─────────────────────────────────────────────────
 function updateAPILabel(){
   var el=document.getElementById('api-lbl');if(!el)return;
+  // Show actual resolved source by doing a quick test fetch
   var extras=[];
-  if(KEYS.fh)extras.push('Finnhub (analyst/news)');
+  if(KEYS.fh)extras.push('Finnhub (analyst/news/RSI)');
   if(KEYS.av)extras.push('Alpha Vantage (gainers)');
-  el.innerHTML='<span style="color:var(--green)">Yahoo Finance &#9679;</span>'
-    +(extras.length?' <span style="color:var(--text3);font-size:11px">+ '+extras.join(', ')+'</span>':'');
+  var extHtml=extras.length?' <span style="color:var(--text3);font-size:11px">+ '+extras.join(', ')+'</span>':'';
+  // Test Yahoo silently; show actual source
+  fetchYahoo('AAPL').then(function(d){
+    if(d&&d.source==='yahoo'){
+      el.innerHTML='<span style="color:var(--green)">Yahoo Finance &#9679;</span>'+extHtml;
+    } else if(KEYS.fh){
+      el.innerHTML='<span style="color:var(--green)">Finnhub Live &#9679;</span>'+extHtml;
+    } else if(KEYS.av){
+      el.innerHTML='<span style="color:var(--yellow)">Alpha Vantage &#9679;</span>'+extHtml;
+    } else {
+      el.innerHTML='<span style="color:var(--text3)">Demo Mode</span>';
+    }
+  });
+  el.innerHTML='<span style="color:var(--text3)">Detecting…</span>';
   var fhInp=document.getElementById('fh-key');if(fhInp&&KEYS.fh)fhInp.value=KEYS.fh;
   var avInp=document.getElementById('av-key');if(avInp&&KEYS.av)avInp.value=KEYS.av;
   var fbInp=document.getElementById('fb-url-inp');if(fbInp&&fbURL())fbInp.value=fbURL();
@@ -2721,27 +2750,83 @@ function updateMustKnowVix(vixVal){
   var fgC=vixVal<15?'var(--green)':vixVal<20?'var(--text)':vixVal<25?'var(--yellow)':vixVal<30?'var(--orange)':'var(--red)';
   mkv.innerHTML='VIX <b style="color:'+(vixVal>25?'var(--red)':'var(--yellow)')+'">'+vixVal.toFixed(2)+'</b> · <span style="color:'+fgC+'">'+fg+'</span>';
 }
-// ── 23. MA OVERLAY ─────────────────────────────────────────────────
-var maState={ma5:true,ma20:true,ma50:false,ma200:false};
-function calcMA(closes,period){
-  return closes.map(function(_,i){
-    if(i<period-1)return null;
-    var sum=0;for(var k=i-period+1;k<=i;k++)sum+=closes[k];
-    return+(sum/period).toFixed(2);
-  });
-}
-function toggleMA(period){
-  var key='ma'+period;
-  maState[key]=!maState[key];
-  var btn=document.getElementById('ma-btn-'+period);
-  if(btn){
-    var colors={5:'#f59e0b',20:'#a78bfa',50:'#00c8ff',200:'#fb923c'};
-    btn.style.background=maState[key]?colors[period]:'var(--card2)';
-    btn.style.color=maState[key]?'#000':'var(--text2)';
-    btn.style.borderColor=maState[key]?colors[period]:'var(--border)';
-    btn.style.fontWeight=maState[key]?'700':'400';
+// ── 23. MA OVERLAY (removed) ──────────────────────────────────────
+// ── 23b. LIVE INDICATOR COMPUTATION ──────────────────────────────
+// ── 23c. SUPPORT / RESISTANCE / TREND LINES ─────────────────────
+function findSRLevels(closes,price){
+  var n=closes.length,pivot=3,highs=[],lows=[];
+  for(var i=pivot;i<n-pivot;i++){
+    var isH=true,isL=true;
+    for(var k=1;k<=pivot;k++){if(closes[i]<=closes[i-k]||closes[i]<=closes[i+k])isH=false;if(closes[i]>=closes[i-k]||closes[i]>=closes[i+k])isL=false;}
+    if(isH)highs.push({i:i,v:closes[i]});
+    if(isL)lows.push({i:i,v:closes[i]});
   }
+  function cluster(arr,thr){
+    var out=[];
+    arr.forEach(function(p){
+      var found=out.find(function(g){return Math.abs(g.v-p.v)/g.v<thr;});
+      if(found){found.v=(found.v+p.v)/2;found.cnt++;}else out.push({v:p.v,cnt:1});
+    });
+    return out.sort(function(a,b){return b.cnt-a.cnt;}).slice(0,3);
+  }
+  var res=cluster(highs.filter(function(h){return h.v>price;}),0.015);
+  var sup=cluster(lows.filter(function(l){return l.v<price;}),0.015);
+  return{resistance:res.map(function(x){return +x.v.toFixed(2);}),support:sup.map(function(x){return +x.v.toFixed(2);})};
+}
+function findTrendLines(closes){
+  var n=closes.length,pivot=3,lows=[],highs=[];
+  for(var i=pivot;i<n-pivot;i++){
+    var isH=true,isL=true;
+    for(var k=1;k<=pivot;k++){if(closes[i]<=closes[i-k]||closes[i]<=closes[i+k])isH=false;if(closes[i]>=closes[i-k]||closes[i]>=closes[i+k])isL=false;}
+    if(isH)highs.push({i:i,v:closes[i]});
+    if(isL)lows.push({i:i,v:closes[i]});
+  }
+  function makeLine(pts,n){
+    if(pts.length<2)return null;
+    var p1=pts[pts.length-2],p2=pts[pts.length-1];
+    if(p1.i===p2.i)return null;
+    var slope=(p2.v-p1.v)/(p2.i-p1.i);
+    var arr=Array(n).fill(null);
+    for(var j=p1.i;j<n;j++)arr[j]=+(p1.v+slope*(j-p1.i)).toFixed(2);
+    return arr;
+  }
+  return{uptrend:makeLine(lows,n),downtrend:makeLine(highs,n)};
+}
+var chartOverlays={volume:true,sr:true,trend:true};
+function toggleOverlay(key){
+  chartOverlays[key]=!chartOverlays[key];
+  var btn=document.getElementById('ov-btn-'+key);
+  var colors={volume:'#64748b',sr:'#f97316',trend:'#06b6d4'};
+  if(btn)btn.style.background=chartOverlays[key]?colors[key]:'var(--card2)';
+  if(btn)btn.style.color=chartOverlays[key]?'#000':'var(--text2)';
   if(mModalSym&&mModalPriceData)drawModalChart(mModalSym,mModalRange,mModalPriceData);
+}
+
+function computeIndicators(closes, price){
+  if(!closes||closes.length<30)return null;
+  var p=price||closes[closes.length-1];
+  // MA50, MA200
+  var ma50=closes.length>=50?+(closes.slice(-50).reduce(function(a,b){return a+b;},0)/50).toFixed(2):null;
+  var ma200=closes.length>=200?+(closes.slice(-200).reduce(function(a,b){return a+b;},0)/200).toFixed(2):null;
+  // RSI(14)
+  var rsiPeriod=14,gains=0,losses=0,rsiStart=Math.max(1,closes.length-rsiPeriod);
+  for(var i=rsiStart;i<closes.length;i++){var d=closes[i]-closes[i-1];if(d>0)gains+=d;else losses+=Math.abs(d);}
+  var cnt=closes.length-rsiStart;
+  var rsi=losses===0?100:Math.round(100-100/(1+(gains/cnt)/(losses/cnt)));
+  // EMA helper
+  function ema(arr,n){var k=2/(n+1),e=[arr[0]];for(var j=1;j<arr.length;j++)e.push(arr[j]*k+e[j-1]*(1-k));return e;}
+  // MACD(12,26,9)
+  var e12=ema(closes,12),e26=ema(closes,26);
+  var macdArr=e12.map(function(v,i){return v-e26[i];});
+  var sigArr=ema(macdArr,9);
+  var ml=macdArr[macdArr.length-1],sl=sigArr[sigArr.length-1];
+  var mp=macdArr[macdArr.length-2],sp=sigArr[sigArr.length-2];
+  var macdLabel=ml>sl&&mp<=sp?'Cross Up':ml<sl&&mp>=sp?'Cross Dn':ml>sl?'Bullish':ml<sl?'Bearish':'Neutral';
+  // Signal & trend
+  var abv50=ma50&&p>ma50,abv200=ma200&&p>ma200,golden=ma50&&ma200&&ma50>ma200;
+  var signal=rsi>75?'CAUTION':rsi<30?'BUY':(abv50&&golden&&ml>sl)?'BUY':(!abv50&&!abv200)?'SELL':'HOLD';
+  var trend=(!abv50&&!abv200)?'Downtrend':(abv50&&golden)?'Uptrend':rsi>70?'Overbought':'Sideways';
+  return{rsi:rsi,macd:macdLabel,trend:trend,signal:signal,ma50:ma50,ma200:ma200,live:true};
 }
 // ── 24. TAB NAVIGATION ────────────────────────────────────────────
 var TABS=['dashboard','watchlist','gainers','calendar','news','trade','backtest','settings','analytics','mj'];
