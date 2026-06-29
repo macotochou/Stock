@@ -1492,13 +1492,39 @@ function renderAnalystBlock(an,price,ab){
 }
 // ── 4. FETCH ─────────────────────────────────────────────────────
 async function fetchYahoo(sym){
+  // Try v7/quote first (richer: pre/post market, 52W range)
   try{
-    var url='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(sym)+'&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,regularMarketPreviousClose,fiftyTwoWeekHigh,fiftyTwoWeekLow,preMarketPrice,preMarketChange,preMarketChangePercent,postMarketPrice,postMarketChange,postMarketChangePercent';
-    var r=await fetch(url);if(!r.ok)return null;
-    var j=await r.json();
-    var q=j.quoteResponse&&j.quoteResponse.result&&j.quoteResponse.result[0];
-    if(!q||!q.regularMarketPrice)return null;
-    return _yqToData(q);
+    var url7='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+encodeURIComponent(sym)+'&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,regularMarketPreviousClose,fiftyTwoWeekHigh,fiftyTwoWeekLow,preMarketPrice,preMarketChange,preMarketChangePercent,postMarketPrice,postMarketChange,postMarketChangePercent';
+    var r7=await fetch(url7);
+    if(r7.ok){
+      var j7=await r7.json();
+      var q=j7.quoteResponse&&j7.quoteResponse.result&&j7.quoteResponse.result[0];
+      if(q&&q.regularMarketPrice)return _yqToData(q);
+    }
+  }catch(e){}
+  // Fallback to v8/chart (wider CORS support)
+  try{
+    var url8='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1d&includePrePost=true';
+    var r8=await fetch(url8);if(!r8.ok)return null;
+    var j8=await r8.json();
+    var res=j8.chart&&j8.chart.result&&j8.chart.result[0];
+    if(!res||!res.meta)return null;
+    var m=res.meta;
+    var p=m.regularMarketPrice;if(!p||p<=0)return null;
+    return{
+      price:p,
+      change:+(m.regularMarketChange||0).toFixed(2),
+      changePct:+(m.regularMarketChangePercent||0).toFixed(2),
+      high:m.regularMarketDayHigh||+(p*1.015).toFixed(2),
+      low:m.regularMarketDayLow||+(p*0.985).toFixed(2),
+      open:m.regularMarketOpen||p,
+      prevClose:m.regularMarketPreviousClose||p,
+      w52hi:m.fiftyTwoWeekHigh||+(p*1.30).toFixed(2),
+      w52lo:m.fiftyTwoWeekLow||+(p*0.70).toFixed(2),
+      preMarket:m.preMarketPrice?{price:m.preMarketPrice,change:+(m.preMarketChange||0).toFixed(2),changePct:+(m.preMarketChangePercent||0).toFixed(2)}:null,
+      postMarket:m.postMarketPrice?{price:m.postMarketPrice,change:+(m.postMarketChange||0).toFixed(2),changePct:+(m.postMarketChangePercent||0).toFixed(2)}:null,
+      live:true,source:'yahoo'
+    };
   }catch(e){return null;}
 }
 function _yqToData(q){
@@ -1531,11 +1557,10 @@ async function fetchYahooBatch(symbols){
 }
 async function fetchQ(sym){
   var c=getCached(sym);if(c)return c;
-  // Yahoo Finance – free, no key needed
-  if(!KEYS.fh&&!KEYS.av){
-    var yd=await fetchYahoo(sym);
-    if(yd){setCache(sym,yd);return yd;}
-  }
+  // Yahoo Finance always first – free, real-time, no key needed
+  var yd=await fetchYahoo(sym);
+  if(yd){setCache(sym,yd);return yd;}
+  // Finnhub fallback (if Yahoo fails)
   if(KEYS.fh){
     try{
       var j=await(await fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(sym)+'&token='+KEYS.fh)).json();
@@ -1546,6 +1571,7 @@ async function fetchQ(sym){
       }
     }catch(e){}
   }
+  // Alpha Vantage fallback
   if(KEYS.av){
     try{
       var j2=await(await fetch('https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol='+encodeURIComponent(sym)+'&apikey='+KEYS.av)).json();
@@ -1559,7 +1585,7 @@ async function fetchQ(sym){
   }
   var p=DP[sym]||50,pct=demoPct(sym),prev=p/(1+pct/100);
   var w3=demoW52(sym);
-  return{price:p,change:+(p-prev).toFixed(2),changePct:pct,high:+(p*1.015).toFixed(2),low:+(p*0.985).toFixed(2),open:+(prev*1.002).toFixed(2),prevClose:+prev.toFixed(2),w52lo:w3.lo,w52hi:w3.hi,live:false};
+  return{price:p,change:+(p-prev).toFixed(2),changePct:pct,high:+(p*1.015).toFixed(2),low:+(p*0.985).toFixed(2),open:+(prev*1.002).toFixed(2),prevClose:+prev.toFixed(2),w52lo:w3.lo,w52hi:w3.hi,live:false,source:'demo'};
 }
 async function fetchHist(sym,days){
   var k='h_'+sym+'_'+days,sv=localStorage.getItem(k);
@@ -2538,7 +2564,7 @@ async function openModal(sym){
     var pct52=(d.price-w.lo)/(w.hi-w.lo)*100;
     document.getElementById('m-stats').innerHTML=[
       ['Open','$'+fmtP(d.open,sym)],
-      ['Prev Close','$'+fmtP(d.prev,sym)],
+      ['Prev Close','$'+fmtP(d.prevClose,sym)],
       ['52W Hi','$'+fmtP(w.hi,sym)],
       ['52W Lo','$'+fmtP(w.lo,sym)],
       ['Mkt Cap',fmtMktCap(sym)||'—'],
@@ -2588,9 +2614,11 @@ function closeModal(e){
 // ── 21. SETTINGS ─────────────────────────────────────────────────
 function updateAPILabel(){
   var el=document.getElementById('api-lbl');if(!el)return;
-  if(KEYS.fh)el.innerHTML='<span style="color:var(--green)">Finnhub Live &#9679;</span>';
-  else if(KEYS.av)el.innerHTML='<span style="color:var(--yellow)">Alpha Vantage &#9679;</span>';
-  else el.innerHTML='<span style="color:var(--text3)">Demo Mode</span>';
+  var extras=[];
+  if(KEYS.fh)extras.push('Finnhub (analyst/news)');
+  if(KEYS.av)extras.push('Alpha Vantage (gainers)');
+  el.innerHTML='<span style="color:var(--green)">Yahoo Finance &#9679;</span>'
+    +(extras.length?' <span style="color:var(--text3);font-size:11px">+ '+extras.join(', ')+'</span>':'');
   var fhInp=document.getElementById('fh-key');if(fhInp&&KEYS.fh)fhInp.value=KEYS.fh;
   var avInp=document.getElementById('av-key');if(avInp&&KEYS.av)avInp.value=KEYS.av;
   var fbInp=document.getElementById('fb-url-inp');if(fbInp&&fbURL())fbInp.value=fbURL();
