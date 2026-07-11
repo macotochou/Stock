@@ -1603,10 +1603,13 @@ async function fetchYahoo(sym){
       var p=m.regularMarketPrice;if(!p||p<=0)continue;
       // Cache 52W from Yahoo while we have it
       if(m.fiftyTwoWeekHigh&&!w52cache[sym])w52cache[sym]={lo:m.fiftyTwoWeekLow,hi:m.fiftyTwoWeekHigh,ts:Date.now()};
+      var pc=m.regularMarketPreviousClose||0;
+      var chg=m.regularMarketChange!=null?+m.regularMarketChange:(pc?+(p-pc).toFixed(2):0);
+      var chgPct=m.regularMarketChangePercent!=null?+m.regularMarketChangePercent:(pc>0?+((p-pc)/pc*100).toFixed(2):0);
       return{
         price:p,
-        change:+(m.regularMarketChange||0).toFixed(2),
-        changePct:+(m.regularMarketChangePercent||0).toFixed(2),
+        change:+chg.toFixed(2),
+        changePct:+chgPct.toFixed(2),
         high:m.regularMarketDayHigh||+(p*1.015).toFixed(2),
         low:m.regularMarketDayLow||+(p*0.985).toFixed(2),
         open:m.regularMarketOpen||p,
@@ -1932,6 +1935,12 @@ async function drawModalChart(sym,range,priceData){
     var volumes=h.map(function(x){return x.volume||0;});
     var hasVol=chartOverlays.volume&&volumes.some(function(v){return v>0;});
     if(hasVol)datasets.push({label:'Volume',data:volumes,type:'bar',backgroundColor:'rgba(100,116,139,0.22)',borderColor:'transparent',yAxisID:'yVol',order:10});
+    // Compute Y-axis bounds from price closes only (so 52W lines don't squish the chart)
+    var validC=closes.filter(function(v){return v>0;});
+    var cMin=Math.min.apply(null,validC),cMax=Math.max.apply(null,validC);
+    var cPad=(cMax-cMin)*0.08||cMax*0.05;
+    var yAxisMin=Math.floor((cMin-cPad)*10)/10;
+    var yAxisMax=Math.ceil((cMax+cPad)*10)/10;
     if(mChart)mChart.destroy();
     mChart=new Chart(mCtx.getContext('2d'),{
       type:'line',
@@ -1945,7 +1954,7 @@ async function drawModalChart(sym,range,priceData){
         },
         scales:{
           x:{ticks:{color:'#4b5e7a',maxTicksLimit:range==='1D'?6:8,font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
-          y:{ticks:{color:'#4b5e7a',font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
+          y:{min:yAxisMin,max:yAxisMax,ticks:{color:'#4b5e7a',font:{size:10}},grid:{color:'rgba(30,45,66,.3)'}},
           yVol:{display:hasVol,position:'right',grid:{display:false},ticks:{display:false},
             max:hasVol?Math.max.apply(null,volumes)*5:undefined,min:0}
         }
