@@ -1431,19 +1431,39 @@ function demoW52(sym){
   var hi=+(p*(1.05+(( seed>>8)&0xff)/255*0.25)).toFixed(2);
   return{lo:lo,hi:hi};
 }
-// ── Live 52W range from Yahoo (1hr cache) ────────────────────────
+// ── Live 52W range — Yahoo → Finnhub → demo fallback ─────────────
 var w52cache={};
 async function fetchW52(sym){
   if(w52cache[sym]&&Date.now()-w52cache[sym].ts<3600000)return w52cache[sym];
-  try{
-    var r=await fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1y');
-    if(!r.ok)throw new Error(r.status);
-    var j=await r.json();
-    var m=j.chart&&j.chart.result&&j.chart.result[0]&&j.chart.result[0].meta;
-    if(!m||!m.fiftyTwoWeekHigh)return demoW52(sym);
-    var d={lo:m.fiftyTwoWeekLow,hi:m.fiftyTwoWeekHigh,ts:Date.now()};
-    w52cache[sym]=d;return d;
-  }catch(e){return demoW52(sym);}
+  // 1. Try Yahoo (query1 then query2)
+  for(var yh of ['query1','query2']){
+    try{
+      var r=await fetch('https://'+yh+'.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1y');
+      if(r.ok){
+        var j=await r.json();
+        var m=j.chart&&j.chart.result&&j.chart.result[0]&&j.chart.result[0].meta;
+        if(m&&m.fiftyTwoWeekHigh){
+          var d={lo:m.fiftyTwoWeekLow,hi:m.fiftyTwoWeekHigh,ts:Date.now()};
+          w52cache[sym]=d;return d;
+        }
+      }
+    }catch(e){}
+  }
+  // 2. Try Finnhub /stock/metric (free tier, returns 52WeekHigh/Low)
+  if(KEYS.fh){
+    try{
+      var r2=await fetch('https://finnhub.io/api/v1/stock/metric?symbol='+encodeURIComponent(sym)+'&metric=all&token='+KEYS.fh);
+      if(r2.ok){
+        var j2=await r2.json();var met=j2.metric||{};
+        var hi=met['52WeekHigh'],lo=met['52WeekLow'];
+        if(hi&&lo){
+          var d2={lo:+lo.toFixed(2),hi:+hi.toFixed(2),ts:Date.now()};
+          w52cache[sym]=d2;return d2;
+        }
+      }
+    }catch(e){}
+  }
+  return demoW52(sym);
 }
 // ── 3. CACHE & KEYS ──────────────────────────────────────────────
 var pcache={};
@@ -2784,9 +2804,15 @@ async function fetchFundamentals(sym){
       revGrow: m.revenueGrowthAnnual  ? +m.revenueGrowthAnnual.toFixed(1)    : null,
       grossMargin: m.grossMarginAnnual? +m.grossMarginAnnual.toFixed(1)      : null,
       roe:   m.roeRfy                 ? +m.roeRfy.toFixed(1)                 : null,
-      beta:  m['52WeekPriceReturnDaily']!==undefined ? null : (m.beta?+m.beta.toFixed(2):null),
-      mktCap:j.metric&&m.marketCapitalization ? m.marketCapitalization : null
+      beta:  m.beta                   ? +m.beta.toFixed(2)                   : null,
+      mktCap:m.marketCapitalization   ? m.marketCapitalization                : null,
+      w52hi: m['52WeekHigh']          ? +m['52WeekHigh'].toFixed(2)           : null,
+      w52lo: m['52WeekLow']           ? +m['52WeekLow'].toFixed(2)            : null
     };
+    // Cache 52W from Finnhub so fetchW52 can use it without extra call
+    if(data.w52hi&&data.w52lo&&!w52cache[sym]){
+      w52cache[sym]={lo:data.w52lo,hi:data.w52hi,ts:Date.now()};
+    }
     fcache[sym]={data:data,ts:Date.now()};
     return data;
   }catch(e){return null;}
