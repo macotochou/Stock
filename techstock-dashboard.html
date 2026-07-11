@@ -2898,14 +2898,31 @@ async function openModal(sym){
     if(extEl){
       var extSrc=d.source==='yahoo'?d:await fetchYahoo(sym);
       var ext=(extSrc&&extSrc.postMarket)||(extSrc&&extSrc.preMarket);
-      var extLabel=(extSrc&&extSrc.postMarket)?'After Hours':'Pre-Market';
+      var extIsAH=!!(extSrc&&extSrc.postMarket);
+      var extLabel=extIsAH?'After Hours':'Pre-Market';
       if(ext&&ext.price){
         var extUp=ext.change>=0;
         var extCol=extUp?'var(--green)':'var(--red)';
-        extEl.innerHTML='<span style="color:var(--text3)">'+extLabel+':</span> '
-          +'<span style="color:'+extCol+';font-weight:700">$'+fmtP(ext.price,sym)+'</span>'
-          +' <span style="color:'+extCol+';font-size:11px">'+(extUp?'+':'')+ext.change.toFixed(2)+' ('+(extUp?'+':'')+ext.changePct.toFixed(2)+'%)</span>';
-        extEl.style.display='block';
+        // On weekends: AH price IS the most current — promote it to main header price
+        if(isWeekend&&extIsAH){
+          document.getElementById('m-price').textContent='$'+fmtP(ext.price,sym);
+          // Update status line
+          if(statusEl)statusEl.innerHTML='<span style="color:#f59e0b">◐ After Hours (Fri) · Last AH price · via Yahoo</span>';
+          // Show regular close as secondary info
+          extEl.innerHTML='Regular Close: <span style="color:var(--text2)">$'+fmtP(d.price,sym)+'</span>'
+            +' · Change on day: <span style="color:'+(up?'var(--green)':'var(--red)')+'"> '+(up?'+':'')+d.changePct.toFixed(2)+'%</span>';
+          extEl.style.display='block';
+          // Also update the day change badge to reflect AH change
+          var ahUp=ext.change>=0;
+          chgEl.className='badge '+(ahUp?'up':'down');
+          chgEl.textContent=(ahUp?'+':'')+ext.changePct.toFixed(2)+'% ('+(ahUp?'+':'')+ext.change.toFixed(2)+') AH';
+        } else {
+          // During weekdays: show AH/PM as secondary line below close
+          extEl.innerHTML='<span style="color:var(--text3)">'+extLabel+':</span> '
+            +'<span style="color:'+extCol+';font-weight:700">$'+fmtP(ext.price,sym)+'</span>'
+            +' <span style="color:'+extCol+';font-size:11px">'+(extUp?'+':'')+ext.change.toFixed(2)+' ('+(extUp?'+':'')+ext.changePct.toFixed(2)+'%)</span>';
+          extEl.style.display='block';
+        }
       } else {
         extEl.style.display='none';
       }
