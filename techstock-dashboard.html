@@ -1660,20 +1660,27 @@ async function fetchYahooBatch(symbols){
 }
 async function fetchQ(sym){
   var c=getCached(sym);if(c)return c;
-  // Yahoo Finance always first – free, real-time, no key needed
-  var yd=await fetchYahoo(sym);
-  if(yd){setCache(sym,yd);return yd;}
-  // Finnhub fallback (if Yahoo fails)
+  // Finnhub first — reliable, no CORS issues from GitHub Pages
   if(KEYS.fh){
     try{
-      var j=await(await fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(sym)+'&token='+KEYS.fh)).json();
-      if(j.c&&j.c>0){
-        var w=await fetchW52(sym);
-        var d={price:j.c,change:j.d,changePct:j.dp,high:j.h,low:j.l,open:j.o,prevClose:j.pc,w52lo:w.lo,w52hi:w.hi,live:true,source:'finnhub'};
-        setCache(sym,d);return d;
+      var fq=await fetchTimeout('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(sym)+'&token='+KEYS.fh,5000);
+      if(fq&&fq.ok){
+        var j=await fq.json();
+        if(j.c&&j.c>0){
+          var pc2=j.pc||j.c;
+          var d={price:j.c,change:+(j.c-pc2).toFixed(2),changePct:+(j.dp||((j.c-pc2)/pc2*100)).toFixed(2),
+                 high:j.h||j.c,low:j.l||j.c,open:j.o||j.c,prevClose:pc2,live:true,source:'finnhub'};
+          setCache(sym,d);
+          // Try Yahoo async (background only) to upgrade with after-hours data
+          fetchYahoo(sym).then(function(yd){if(yd&&yd.live)setCache(sym,yd);}).catch(function(){});
+          return d;
+        }
       }
     }catch(e){}
   }
+  // Yahoo fallback (may work via CORS proxy)
+  var yd=await fetchYahoo(sym);
+  if(yd){setCache(sym,yd);return yd;}
   // Alpha Vantage fallback
   if(KEYS.av){
     try{
@@ -2097,16 +2104,13 @@ function addPlaceholders(stocks,gridId){
 }
 async function loadGrid(stocks,gridId){
   addPlaceholders(stocks,gridId);
-  // Batch-fetch all symbols in one Yahoo request (fills cache instantly)
-  var syms=stocks.map(function(s){return s.symbol;});
-  await fetchYahooBatch(syms);
-  // Render all cards – most will hit cache, no delay needed
-  for(var i=0;i<stocks.length;i++){
+  // Fetch all in parallel — Finnhub handles concurrent requests fine
+  await Promise.all(stocks.map(async function(stock){
     try{
-      var d=await fetchQ(stocks[i].symbol);
-      renderCard(stocks[i],d,gridId);
-    }catch(e){console.warn('loadGrid err',stocks[i].symbol,e);}
-  }
+      var d=await fetchQ(stock.symbol);
+      renderCard(stock,d,gridId);
+    }catch(e){console.warn('loadGrid err',stock.symbol,e);}
+  }));
 }
 // ── Add stock to Dashboard / Watchlist ──────────────────────────
 var USER_DASH_STOCKS=JSON.parse(localStorage.getItem('user_dash_stocks')||'[]');
@@ -2224,8 +2228,7 @@ async function initWatchlist(){
       var idx=INDICES[i],sid=idx.symbol.replace(/[^a-z0-9]/gi,'_');
       strip.insertAdjacentHTML('beforeend','<div class="idx-card" id="idx-'+sid+'" onclick="openModal(\''+idx.symbol+'\')"><div class="ik">'+idx.symbol+'</div><div class="in2">'+idx.name+'</div><div class="shimmer"></div></div>');
     }
-    // Batch prefetch all index symbols
-    await fetchYahooBatch(INDICES.map(function(i){return i.symbol;}));
+    // Fetch all index quotes in parallel
     for(var j=0;j<INDICES.length;j++){
       try{
         var idx2=INDICES[j],d=await fetchQ(idx2.symbol);
