@@ -1550,33 +1550,37 @@ function renderAnalystBlock(an,price,ab){
 }
 // ── 4. FETCH ─────────────────────────────────────────────────────
 async function fetchYahoo(sym){
-  // v8/finance/chart — no crumb needed, works cross-origin from any domain
-  try{
-    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=2d&includePrePost=true';
-    var r=await fetch(url);
-    if(!r.ok)throw new Error(r.status);
-    var j=await r.json();
-    var res=j.chart&&j.chart.result&&j.chart.result[0];
-    if(!res||!res.meta)return null;
-    var m=res.meta;
-    var p=m.regularMarketPrice;if(!p||p<=0)return null;
-    // Cache 52W from Yahoo while we have it
-    if(m.fiftyTwoWeekHigh&&!w52cache[sym])w52cache[sym]={lo:m.fiftyTwoWeekLow,hi:m.fiftyTwoWeekHigh,ts:Date.now()};
-    return{
-      price:p,
-      change:+(m.regularMarketChange||0).toFixed(2),
-      changePct:+(m.regularMarketChangePercent||0).toFixed(2),
-      high:m.regularMarketDayHigh||+(p*1.015).toFixed(2),
-      low:m.regularMarketDayLow||+(p*0.985).toFixed(2),
-      open:m.regularMarketOpen||p,
-      prevClose:m.regularMarketPreviousClose||p,
-      w52hi:m.fiftyTwoWeekHigh||+(p*1.30).toFixed(2),
-      w52lo:m.fiftyTwoWeekLow||+(p*0.70).toFixed(2),
-      preMarket:m.preMarketPrice?{price:m.preMarketPrice,change:+(m.preMarketChange||0).toFixed(2),changePct:+(m.preMarketChangePercent||0).toFixed(2)}:null,
-      postMarket:m.postMarketPrice?{price:m.postMarketPrice,change:+(m.postMarketChange||0).toFixed(2),changePct:+(m.postMarketChangePercent||0).toFixed(2)}:null,
-      live:true,source:'yahoo'
-    };
-  }catch(e){return null;}
+  // Try query1 then query2 — one may be unblocked depending on browser/network
+  var hosts=['query1','query2'];
+  for(var hi=0;hi<hosts.length;hi++){
+    try{
+      var url='https://'+hosts[hi]+'.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=2d&includePrePost=true';
+      var r=await fetch(url);
+      if(!r.ok)continue;
+      var j=await r.json();
+      var res=j.chart&&j.chart.result&&j.chart.result[0];
+      if(!res||!res.meta)continue;
+      var m=res.meta;
+      var p=m.regularMarketPrice;if(!p||p<=0)continue;
+      // Cache 52W from Yahoo while we have it
+      if(m.fiftyTwoWeekHigh&&!w52cache[sym])w52cache[sym]={lo:m.fiftyTwoWeekLow,hi:m.fiftyTwoWeekHigh,ts:Date.now()};
+      return{
+        price:p,
+        change:+(m.regularMarketChange||0).toFixed(2),
+        changePct:+(m.regularMarketChangePercent||0).toFixed(2),
+        high:m.regularMarketDayHigh||+(p*1.015).toFixed(2),
+        low:m.regularMarketDayLow||+(p*0.985).toFixed(2),
+        open:m.regularMarketOpen||p,
+        prevClose:m.regularMarketPreviousClose||p,
+        w52hi:m.fiftyTwoWeekHigh||+(p*1.30).toFixed(2),
+        w52lo:m.fiftyTwoWeekLow||+(p*0.70).toFixed(2),
+        preMarket:m.preMarketPrice?{price:m.preMarketPrice,change:+(m.preMarketChange||0).toFixed(2),changePct:+(m.preMarketChangePercent||0).toFixed(2)}:null,
+        postMarket:m.postMarketPrice?{price:m.postMarketPrice,change:+(m.postMarketChange||0).toFixed(2),changePct:+(m.postMarketChangePercent||0).toFixed(2)}:null,
+        live:true,source:'yahoo'
+      };
+    }catch(e){}
+  }
+  return null;
 }
 function _yqToData(q){
   var p=q.regularMarketPrice;
@@ -2932,15 +2936,9 @@ async function openModal(sym){
     var w={lo:d.w52lo,hi:d.w52hi};
     if(!w.lo||!w.hi||w.lo<=0){var wf=await fetchW52(sym);w={lo:wf.lo,hi:wf.hi};}
     var pct52=(d.price-w.lo)/(w.hi-w.lo)*100;
-    // Change badge subtitle: show vs prev close for context
+    // Clear any stale chg-note
     var chgNote=document.getElementById('m-chg-note');
-    if(!chgNote){
-      chgNote=document.createElement('div');chgNote.id='m-chg-note';
-      chgNote.style.cssText='font-size:10px;color:var(--text3);margin-top:2px';
-      var chgParent=document.getElementById('m-chg').parentNode;
-      chgParent.appendChild(chgNote);
-    }
-    chgNote.textContent='vs prev close $'+fmtP(d.prevClose,sym);
+    if(chgNote)chgNote.textContent='';
     function mkStat(lbl,val){return '<div class="stat-box"><div class="lbl">'+lbl+'</div><div class="val">'+val+'</div></div>';}
     document.getElementById('m-stats').innerHTML=
       mkStat('Open','$'+fmtP(d.open,sym))
