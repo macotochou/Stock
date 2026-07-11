@@ -1433,13 +1433,21 @@ function demoW52(sym){
 }
 // ── Yahoo CORS proxy helper ───────────────────────────────────────
 // GitHub Pages is blocked by Yahoo's CORS policy. Try direct first,
-// then route through corsproxy.io (free, only used for public Yahoo data).
-var CORS_PROXY='https://corsproxy.io/?';
+// then try multiple CORS proxies (corsproxy.io may rate-limit → fallback to allorigins).
+var CORS_PROXIES=[
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url='
+];
 async function yFetch(url){
-  // 1. Try direct (works when running locally or if Yahoo unblocks)
+  // 1. Try direct (works locally or if Yahoo unblocks)
   try{var r=await fetch(url);if(r.ok)return r;}catch(e){}
-  // 2. Try via CORS proxy
-  try{var r2=await fetch(CORS_PROXY+encodeURIComponent(url));if(r2.ok)return r2;}catch(e){}
+  // 2. Try each CORS proxy in order
+  for(var pi=0;pi<CORS_PROXIES.length;pi++){
+    try{
+      var r2=await fetch(CORS_PROXIES[pi]+encodeURIComponent(url));
+      if(r2&&r2.ok)return r2;
+    }catch(e){}
+  }
   return null;
 }
 // ── Live 52W range — Yahoo → Finnhub → demo fallback ─────────────
@@ -1911,6 +1919,14 @@ async function drawModalChart(sym,range,priceData){
       var tl=findTrendLines(closes);
       if(tl.uptrend)datasets.push({label:'Uptrend',data:tl.uptrend,borderColor:'rgba(6,182,212,0.85)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,borderDash:[4,3],order:4});
       if(tl.downtrend)datasets.push({label:'Downtrend',data:tl.downtrend,borderColor:'rgba(168,85,247,0.85)',borderWidth:1.5,pointRadius:0,fill:false,tension:0,borderDash:[4,3],order:4});
+    }
+    // ── 52W Hi / Lo reference lines ──
+    var w52now=w52cache[sym];
+    if(!w52now){var pd2=getCached(sym);if(pd2&&pd2.w52hi)w52now={hi:pd2.w52hi,lo:pd2.w52lo};}
+    if(w52now&&w52now.hi&&closes.length){
+      // Only show if 52W hi is above or 52W lo is below the chart price range — always useful to show
+      datasets.push({label:'52W Hi $'+w52now.hi.toFixed(2),data:Array(closes.length).fill(w52now.hi),borderColor:'rgba(251,191,36,0.7)',borderWidth:1.2,pointRadius:0,fill:false,tension:0,borderDash:[3,5],order:6});
+      datasets.push({label:'52W Lo $'+w52now.lo.toFixed(2),data:Array(closes.length).fill(w52now.lo),borderColor:'rgba(148,163,184,0.5)',borderWidth:1.2,pointRadius:0,fill:false,tension:0,borderDash:[3,5],order:6});
     }
     // ── Volume bars ──
     var volumes=h.map(function(x){return x.volume||0;});
