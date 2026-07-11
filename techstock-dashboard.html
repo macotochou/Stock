@@ -1431,6 +1431,17 @@ function demoW52(sym){
   var hi=+(p*(1.05+(( seed>>8)&0xff)/255*0.25)).toFixed(2);
   return{lo:lo,hi:hi};
 }
+// ── Yahoo CORS proxy helper ───────────────────────────────────────
+// GitHub Pages is blocked by Yahoo's CORS policy. Try direct first,
+// then route through corsproxy.io (free, only used for public Yahoo data).
+var CORS_PROXY='https://corsproxy.io/?';
+async function yFetch(url){
+  // 1. Try direct (works when running locally or if Yahoo unblocks)
+  try{var r=await fetch(url);if(r.ok)return r;}catch(e){}
+  // 2. Try via CORS proxy
+  try{var r2=await fetch(CORS_PROXY+encodeURIComponent(url));if(r2.ok)return r2;}catch(e){}
+  return null;
+}
 // ── Live 52W range — Yahoo → Finnhub → demo fallback ─────────────
 var w52cache={};
 async function fetchW52(sym){
@@ -1438,8 +1449,8 @@ async function fetchW52(sym){
   // 1. Try Yahoo (query1 then query2)
   for(var yh of ['query1','query2']){
     try{
-      var r=await fetch('https://'+yh+'.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1y');
-      if(r.ok){
+      var r=await yFetch('https://'+yh+'.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=1y');
+      if(r&&r.ok){
         var j=await r.json();
         var m=j.chart&&j.chart.result&&j.chart.result[0]&&j.chart.result[0].meta;
         if(m&&m.fiftyTwoWeekHigh){
@@ -1575,8 +1586,8 @@ async function fetchYahoo(sym){
   for(var hi=0;hi<hosts.length;hi++){
     try{
       var url='https://'+hosts[hi]+'.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=2d&includePrePost=true';
-      var r=await fetch(url);
-      if(!r.ok)continue;
+      var r=await yFetch(url);
+      if(!r||!r.ok)continue;
       var j=await r.json();
       var res=j.chart&&j.chart.result&&j.chart.result[0];
       if(!res||!res.meta)continue;
@@ -1625,7 +1636,7 @@ async function fetchYahooBatch(symbols){
   try{
     if(!symbols||!symbols.length)return;
     var url='https://query1.finance.yahoo.com/v7/finance/quote?symbols='+symbols.map(encodeURIComponent).join(',')+'&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,regularMarketPreviousClose,fiftyTwoWeekHigh,fiftyTwoWeekLow,preMarketPrice,preMarketChange,preMarketChangePercent,postMarketPrice,postMarketChange,postMarketChangePercent';
-    var r=await fetch(url);if(!r.ok)return;
+    var r=await yFetch(url);if(!r||!r.ok)return;
     var j=await r.json();
     var results=j.quoteResponse&&j.quoteResponse.result||[];
     results.forEach(function(q){if(q.regularMarketPrice)setCache(q.symbol,_yqToData(q));});
@@ -1706,7 +1717,7 @@ async function fetchHistRange(sym,range){
   // This works on weekends (shows Friday) and live days (shows today)
   if(range==='1D'){
     try{
-      var r1d=await fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=5m&range=5d&includePrePost=false');
+      var r1d=await yFetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=5m&range=5d&includePrePost=false');
       if(r1d.ok){
         var j1d=await r1d.json();
         var res1d=j1d.chart&&j1d.chart.result&&j1d.chart.result[0];
@@ -1785,7 +1796,7 @@ async function fetchHistRange(sym,range){
   // For 1D: last-resort Yahoo 5d daily fallback (free, no premium needed, real prices)
   if(!data&&range==='1D'){
     try{
-      var r5d=await fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=5d&includePrePost=false');
+      var r5d=await yFetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1d&range=5d&includePrePost=false');
       if(r5d.ok){
         var j5d=await r5d.json();
         var res5d=j5d.chart&&j5d.chart.result&&j5d.chart.result[0];
@@ -3114,7 +3125,7 @@ async function loadMacroBar(){
   }
   var results=await Promise.all(macros.map(async function(m){
     try{
-      var r=await fetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(m.sym)+'?interval=1d&range=5d&includePrePost=false');
+      var r=await yFetch('https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(m.sym)+'?interval=1d&range=5d&includePrePost=false');
       if(!r.ok)return null;
       var j=await r.json();
       var res=j.chart&&j.chart.result&&j.chart.result[0];
