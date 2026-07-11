@@ -1436,15 +1436,18 @@ function demoW52(sym){
 // then try multiple CORS proxies (corsproxy.io may rate-limit → fallback to allorigins).
 var CORS_PROXIES=[
   'https://corsproxy.io/?',
-  'https://api.allorigins.win/raw?url='
+  'https://api.allorigins.win/raw?url=',
+  'https://api.codetabs.com/v1/proxy?quest='
 ];
+// Fetch with 8s timeout
+function fetchTimeout(url,ms){ms=ms||8000;return Promise.race([fetch(url),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},ms);})]);}
 async function yFetch(url){
   // 1. Try direct (works locally or if Yahoo unblocks)
-  try{var r=await fetch(url);if(r.ok)return r;}catch(e){}
+  try{var r=await fetchTimeout(url,5000);if(r.ok)return r;}catch(e){}
   // 2. Try each CORS proxy in order
   for(var pi=0;pi<CORS_PROXIES.length;pi++){
     try{
-      var r2=await fetch(CORS_PROXIES[pi]+encodeURIComponent(url));
+      var r2=await fetchTimeout(CORS_PROXIES[pi]+encodeURIComponent(url),8000);
       if(r2&&r2.ok)return r2;
     }catch(e){}
   }
@@ -1604,8 +1607,9 @@ async function fetchYahoo(sym){
       // Cache 52W from Yahoo while we have it
       if(m.fiftyTwoWeekHigh&&!w52cache[sym])w52cache[sym]={lo:m.fiftyTwoWeekLow,hi:m.fiftyTwoWeekHigh,ts:Date.now()};
       var pc=m.regularMarketPreviousClose||0;
-      var chg=m.regularMarketChange!=null?+m.regularMarketChange:(pc?+(p-pc).toFixed(2):0);
-      var chgPct=m.regularMarketChangePercent!=null?+m.regularMarketChangePercent:(pc>0?+((p-pc)/pc*100).toFixed(2):0);
+      // Always compute from price–prevClose for accurate daily change (Yahoo may return 0 on weekends)
+      var chg=pc>0?+(p-pc).toFixed(2):+(m.regularMarketChange||0).toFixed(2);
+      var chgPct=pc>0?+((p-pc)/pc*100).toFixed(2):+(m.regularMarketChangePercent||0).toFixed(2);
       return{
         price:p,
         change:+chg.toFixed(2),
@@ -1690,7 +1694,7 @@ async function fetchHist(sym,days){
   var k='h_'+sym+'_'+days,sv=localStorage.getItem(k);
   if(sv){var par=JSON.parse(sv);if(Date.now()-par.ts<3600000)return par.data;}
   var data=null;
-  if(KEYS.fh){try{var to=Math.floor(Date.now()/1000),from=to-(days+50)*86400;var j=await(await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(sym)+'&resolution=D&from='+from+'&to='+to+'&token='+KEYS.fh)).json();if(j.s==='ok')data=j.t.map(function(t,i){return{date:new Date(t*1000).toISOString().slice(0,10),close:+j.c[i].toFixed(2)};});}catch(e){}}
+  if(KEYS.fh){try{var to=Math.floor(Date.now()/1000),from=to-(days+50)*86400;var fhr=await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(sym)+'&resolution=D&from='+from+'&to='+to+'&token='+KEYS.fh);if(fhr.ok){var j=await fhr.json();if(j.s==='ok')data=j.t.map(function(t,i){return{date:new Date(t*1000).toISOString().slice(0,10),close:+j.c[i].toFixed(2)};});}}catch(e){}}
   if(!data)data=demoHist(sym,days);
   localStorage.setItem(k,JSON.stringify({ts:Date.now(),data:data}));
   return data;
@@ -1764,8 +1768,8 @@ async function fetchHistRange(sym,range){
   if(!data)try{
     var yr=YAHOO_RANGES[range]||YAHOO_RANGES['3M'];
     var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval='+yr.interval+'&range='+yr.range+'&includePrePost=false';
-    var r=await fetch(url);
-    if(r.ok){
+    var r=await yFetch(url);
+    if(r&&r.ok){
       var j=await r.json();
       var res=j.chart&&j.chart.result&&j.chart.result[0];
       if(res&&res.timestamp){
@@ -1792,7 +1796,9 @@ async function fetchHistRange(sym,range){
     try{
       var fr=FH_RANGES[range]||FH_RANGES['3M'];
       var now2=Math.floor(Date.now()/1000),from2=now2-fr.days*86400;
-      var j2=await(await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(sym)+'&resolution='+fr.res+'&from='+from2+'&to='+now2+'&token='+KEYS.fh)).json();
+      var fhResp=await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(sym)+'&resolution='+fr.res+'&from='+from2+'&to='+now2+'&token='+KEYS.fh);
+      if(!fhResp.ok){throw new Error('Finnhub '+fhResp.status);}
+      var j2=await fhResp.json();
       if(j2.s==='ok'){
         var isMin2=fr.res!=='D'&&fr.res!=='W'&&fr.res!=='M';
         data=j2.t.map(function(t,i){
