@@ -383,11 +383,24 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
     <div class="acts"><button class="btn" onclick="reloadGainers()">&#8635; Refresh</button></div>
   </div>
   <div id="gainers-today">
-    <div class="av-notice" id="av-notice">&#8505; <b>Full market data</b> needs a free Alpha Vantage key (Settings). Demo shows 70+ stock universe.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <span style="font-size:11px;color:var(--text3);margin-right:2px">Sector:</span>
+      <button class="pp active" onclick="filterGainers(this,'All')">All</button>
+      <button class="pp" onclick="filterGainers(this,'Semiconductors')">Chips</button>
+      <button class="pp" onclick="filterGainers(this,'Memory')">Memory</button>
+      <button class="pp" onclick="filterGainers(this,'Internet')">Internet</button>
+      <button class="pp" onclick="filterGainers(this,'Cloud')">Cloud</button>
+      <button class="pp" onclick="filterGainers(this,'Cloud & Software')">SaaS</button>
+      <button class="pp" onclick="filterGainers(this,'Networking')">Networking</button>
+      <button class="pp" onclick="filterGainers(this,'Consumer Tech')">Consumer</button>
+      <button class="pp" onclick="filterGainers(this,'Financials')">Finance</button>
+      <button class="pp" onclick="filterGainers(this,'AI & Data')">AI</button>
+    </div>
+    <div id="gainers-status" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
     <div class="gainers-grid">
       <div class="lb" id="lb-gain"><div class="lb-hdr">&#129001; Top Gainers</div><div class="empty">Loading&hellip;</div></div>
       <div class="lb" id="lb-lose"><div class="lb-hdr">&#128997; Top Losers</div><div class="empty">Loading&hellip;</div></div>
-      <div class="lb" id="lb-active"><div class="lb-hdr">&#9889; Most Active</div><div class="empty">Loading&hellip;</div></div>
+      <div class="lb" id="lb-sector"><div class="lb-hdr">&#128200; By Sector</div><div class="empty">Loading&hellip;</div></div>
     </div>
   </div>
   <div id="gainers-period" style="display:none">
@@ -2259,31 +2272,116 @@ function switchGainersTab(t){
   if(t==='today')loadTodayGainers();
 }
 function reloadGainers(){if(gTab==='today')loadTodayGainers();else loadPeriodGainers(gPeriod);}
+var _gainersData=[]; // global cache for filter
+var _gainersFilter='All';
 async function loadTodayGainers(){
-  setLB('lb-gain','&#129001; Top Gainers','Loading&hellip;');
-  setLB('lb-lose','&#128997; Top Losers','Loading&hellip;');
-  setLB('lb-active','&#9889; Most Active','Loading&hellip;');
-  var notice=document.getElementById('av-notice');if(notice)notice.style.display=KEYS.av?'none':'block';
-  if(KEYS.av){
-    try{
-      var j=await(await fetch('https://www.alphavantage.co/query?function=TOP_GAINERS_LOSERS&apikey='+KEYS.av)).json();
-      if(j.top_gainers){setLB('lb-gain','&#129001; Top Gainers','');renderLBav('lb-gain',j.top_gainers.slice(0,10));}
-      if(j.top_losers){setLB('lb-lose','&#128997; Top Losers','');renderLBav('lb-lose',j.top_losers.slice(0,10));}
-      if(j.most_actively_traded){setLB('lb-active','&#9889; Most Active','');renderLBav('lb-active',j.most_actively_traded.slice(0,10),true);}
-    }catch(e){console.warn('AV gainers err',e);runDemoGainers();}
-  } else {
-    runDemoGainers();
-  }
-}
-function runDemoGainers(){
+  setLB('lb-gain','&#129001; Top Gainers','<div class="empty">Loading&hellip;</div>');
+  setLB('lb-lose','&#128997; Top Losers','<div class="empty">Loading&hellip;</div>');
+  setLB('lb-sector','&#128200; By Sector','<div class="empty">Loading&hellip;</div>');
+  var statusEl=document.getElementById('gainers-status');
+  if(statusEl)statusEl.textContent='Fetching live prices via Finnhub…';
+  // Combine all known stocks
   var all=TECH_STOCKS.concat(WATCHLIST_STOCKS);
   var seen={};
   var uni=all.filter(function(s){if(seen[s.symbol])return false;seen[s.symbol]=1;return true;});
-  var withPct=uni.map(function(s){return{sym:s.symbol,name:s.name,pct:demoPct(s.symbol),price:DP[s.symbol]||0};});
-  var sorted=withPct.slice().sort(function(a,b){return b.pct-a.pct;});
-  renderLBdemo('lb-gain',sorted.slice(0,10));
-  renderLBdemo('lb-lose',sorted.reverse().slice(0,10));
-  renderLBdemo('lb-active',withPct.slice().sort(function(a,b){return Math.abs(b.pct)-Math.abs(a.pct);}).slice(0,10),true);
+  // Fetch all in parallel via Finnhub
+  var results=await Promise.all(uni.map(async function(stock){
+    try{
+      var d=await fetchQ(stock.symbol);
+      if(d&&(d.live||d.changePct)){
+        // Map partial sector names
+        var sec=stock.sector||'Tech';
+        if(sec==='Cloud & E-Com'||sec==='Cloud & Software')sec=sec; // keep full name
+        return{sym:stock.symbol,name:stock.name,sector:sec,
+               pct:+(d.changePct||0),price:d.price||0,change:+(d.change||0),
+               prevClose:d.prevClose||0,live:!!d.live};
+      }
+    }catch(e){}
+    return null;
+  }));
+  _gainersData=results.filter(Boolean);
+  var liveCount=_gainersData.filter(function(x){return x.live;}).length;
+  if(statusEl)statusEl.textContent='Live data: '+liveCount+'/'+_gainersData.length+' stocks · via Finnhub · '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  renderGainersWithFilter(_gainersFilter);
+}
+function filterGainers(btn,sector){
+  _gainersFilter=sector;
+  document.querySelectorAll('#gainers-today .pp').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  renderGainersWithFilter(sector);
+}
+function renderGainersWithFilter(sector){
+  var data=sector==='All'?_gainersData:_gainersData.filter(function(x){
+    // fuzzy match: 'Cloud' matches 'Cloud & Software', 'Cloud & E-Com', 'Cloud'
+    return x.sector===sector||x.sector.startsWith(sector);
+  });
+  if(!data.length){
+    setLB('lb-gain','&#129001; Top Gainers','<div class="empty">No data for this sector</div>');
+    setLB('lb-lose','&#128997; Top Losers','<div class="empty">No data for this sector</div>');
+  } else {
+    var sorted=data.slice().sort(function(a,b){return b.pct-a.pct;});
+    setLB('lb-gain','&#129001; Top Gainers'+(sector!=='All'?' · '+sector:''),'');
+    renderLBfinnhub('lb-gain',sorted.slice(0,10));
+    setLB('lb-lose','&#128997; Top Losers'+(sector!=='All'?' · '+sector:''),'');
+    renderLBfinnhub('lb-lose',sorted.slice(-10).reverse());
+  }
+  // Sector performance always uses all data
+  renderSectorPanel();
+}
+function renderLBfinnhub(id,items){
+  var el=document.getElementById(id);if(!el)return;
+  var rows=items.map(function(x){
+    var up=x.pct>=0;
+    var chgStr=(up?'+':'')+x.pct.toFixed(2)+'%';
+    return '<div class="lb-row" onclick="openModal(\''+escH(x.sym)+'\')" style="cursor:pointer">'
+      +'<div style="display:flex;flex-direction:column;min-width:0">'
+        +'<span class="lb-sym">'+escH(x.sym)+'</span>'
+        +'<span style="font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(x.name)+'</span>'
+      +'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">$'+x.price.toFixed(2)+'</div>'
+      +'<div class="badge '+(up?'up':'down')+'">'+chgStr+'</div>'
+      +'</div>';
+  }).join('');
+  var hdr=el.querySelector('.lb-hdr');
+  el.innerHTML=(hdr?hdr.outerHTML:'')+rows;
+}
+function renderSectorPanel(){
+  // Group all data by sector and compute avg change
+  var byS={};
+  _gainersData.forEach(function(x){
+    if(!byS[x.sector])byS[x.sector]={stocks:[],total:0,pos:0,neg:0};
+    byS[x.sector].stocks.push(x);
+    byS[x.sector].total+=x.pct;
+    if(x.pct>=0)byS[x.sector].pos++;else byS[x.sector].neg++;
+  });
+  var sectors=Object.keys(byS).map(function(s){
+    var g=byS[s];
+    var avg=g.total/g.stocks.length;
+    return{sector:s,avg:avg,count:g.stocks.length,pos:g.pos,neg:g.neg};
+  }).sort(function(a,b){return b.avg-a.avg;});
+  var el=document.getElementById('lb-sector');if(!el)return;
+  var hdr=el.querySelector('.lb-hdr');
+  var rows=sectors.map(function(s){
+    var up=s.avg>=0;
+    var barW=Math.min(Math.abs(s.avg)*8,100);
+    var barColor=up?'rgba(16,185,129,0.35)':'rgba(239,68,68,0.35)';
+    return '<div class="lb-row" onclick="filterGainers(null,\''+escH(s.sector)+'\')" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:3px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+        +'<span style="font-size:11px;font-weight:600;color:var(--text1)">'+escH(s.sector)+'</span>'
+        +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<span style="font-size:9px;color:var(--text3)">'+s.pos+'↑ '+s.neg+'↓</span>'
+          +'<span class="badge '+(up?'up':'down')+'">'+(up?'+':'')+s.avg.toFixed(2)+'%</span>'
+        +'</div>'
+      +'</div>'
+      +'<div style="height:3px;border-radius:2px;background:var(--border);overflow:hidden">'
+        +'<div style="height:100%;width:'+barW+'%;background:'+barColor+';transition:width .3s"></div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  el.innerHTML=(hdr?hdr.outerHTML:'')+rows;
+  // Update header with filter hint
+  var hdrEl=el.querySelector('.lb-hdr');
+  if(hdrEl)hdrEl.innerHTML='&#128200; By Sector <span style="font-size:10px;font-weight:400;color:var(--text3)">(click to filter)</span>';
 }
 function setLB(id,title,body){
   var el=document.getElementById(id);if(!el)return;
@@ -2333,18 +2431,16 @@ async function loadPeriodGainers(period){
   var all=TECH_STOCKS.concat(WATCHLIST_STOCKS);
   var seen={};
   var uni=all.filter(function(s){if(seen[s.symbol])return false;seen[s.symbol]=1;return true;});
-  var results=[];
-  for(var i=0;i<uni.length;i++){
+  var results=(await Promise.all(uni.map(async function(stock){
     try{
-      var hist=await fetchHistRange(uni[i].symbol,range);
+      var hist=await fetchHistRange(stock.symbol,range);
       if(hist&&hist.length>=2){
         var start=hist[0].close,end=hist[hist.length-1].close;
-        var pct=((end-start)/start*100);
-        results.push({sym:uni[i].symbol,name:uni[i].name,sector:uni[i].sector||'Tech',pct:pct,price:end});
+        return{sym:stock.symbol,name:stock.name,sector:stock.sector||'Tech',pct:(end-start)/start*100,price:end};
       }
     }catch(e){}
-    await sleep(30);
-  }
+    return null;
+  }))).filter(Boolean);
   results.sort(function(a,b){return b.pct-a.pct;});
   renderLBdemo('lb-pg',results.slice(0,20));
   renderLBdemo('lb-pl',results.slice(-20).reverse());
