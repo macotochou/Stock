@@ -1680,8 +1680,11 @@ async function fetchQ(sym){
       if(fq&&fq.ok){
         var j=await fq.json();
         if(j.c&&j.c>0){
-          var pc2=j.pc||j.c;
-          var d={price:j.c,change:+(j.c-pc2).toFixed(2),changePct:+(j.dp||((j.c-pc2)/pc2*100)).toFixed(2),
+          var pc2=j.pc&&j.pc>0?j.pc:j.c;
+          // Always compute change from c-pc (Finnhub dp=0 on weekends even when prices differ)
+          var rawChg=+(j.c-pc2).toFixed(2);
+          var rawPct=pc2>0&&pc2!==j.c?+((j.c-pc2)/pc2*100).toFixed(2):+(j.dp||0).toFixed(2);
+          var d={price:j.c,change:rawChg,changePct:rawPct,
                  high:j.h||j.c,low:j.l||j.c,open:j.o||j.c,prevClose:pc2,live:true,source:'finnhub'};
           setCache(sym,d);
           // Try Yahoo async (background only) to upgrade with after-hours data
@@ -2284,21 +2287,26 @@ async function loadTodayGainers(){
   var all=TECH_STOCKS.concat(WATCHLIST_STOCKS);
   var seen={};
   var uni=all.filter(function(s){if(seen[s.symbol])return false;seen[s.symbol]=1;return true;});
-  // Fetch all in parallel via Finnhub
-  var results=await Promise.all(uni.map(async function(stock){
+  // Use pcache first (dashboard may already have fetched these — instant, no lag)
+  // For cache misses, fetch in parallel via Finnhub
+  var cached=uni.filter(function(s){return !!getCached(s.symbol);});
+  var missing=uni.filter(function(s){return !getCached(s.symbol);});
+  if(statusEl)statusEl.textContent='Loading… ('+cached.length+' cached, fetching '+missing.length+' fresh)';
+  if(missing.length){
+    await Promise.all(missing.map(async function(s){
+      try{await fetchQ(s.symbol);}catch(e){}
+    }));
+  }
+  var results=uni.map(function(stock){
     try{
-      var d=await fetchQ(stock.symbol);
-      if(d&&(d.live||d.changePct)){
-        // Map partial sector names
-        var sec=stock.sector||'Tech';
-        if(sec==='Cloud & E-Com'||sec==='Cloud & Software')sec=sec; // keep full name
-        return{sym:stock.symbol,name:stock.name,sector:sec,
-               pct:+(d.changePct||0),price:d.price||0,change:+(d.change||0),
-               prevClose:d.prevClose||0,live:!!d.live};
-      }
+      var d=getCached(stock.symbol)||{changePct:0,price:0,change:0,live:false};
+      var sec=stock.sector||'Tech';
+      return{sym:stock.symbol,name:stock.name,sector:sec,
+             pct:+(d.changePct||0),price:d.price||0,change:+(d.change||0),
+             prevClose:d.prevClose||0,live:!!d.live};
     }catch(e){}
     return null;
-  }));
+  });
   _gainersData=results.filter(Boolean);
   var liveCount=_gainersData.filter(function(x){return x.live;}).length;
   if(statusEl)statusEl.textContent='Live data: '+liveCount+'/'+_gainersData.length+' stocks · via Finnhub · '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
@@ -2330,15 +2338,17 @@ function renderGainersWithFilter(sector){
 }
 function renderLBfinnhub(id,items){
   var el=document.getElementById(id);if(!el)return;
-  var rows=items.map(function(x){
+  var rows=items.map(function(x,i){
     var up=x.pct>=0;
     var chgStr=(up?'+':'')+x.pct.toFixed(2)+'%';
+    var priceStr='$'+x.price.toFixed(2);
     return '<div class="lb-row" onclick="openModal(\''+escH(x.sym)+'\')" style="cursor:pointer">'
-      +'<div style="display:flex;flex-direction:column;min-width:0">'
-        +'<span class="lb-sym">'+escH(x.sym)+'</span>'
-        +'<span style="font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(x.name)+'</span>'
+      +'<div style="font-size:10px;color:var(--text3);text-align:center">'+(i+1)+'</div>'
+      +'<div class="lb-sym">'+escH(x.sym)+'</div>'
+      +'<div style="min-width:0;overflow:hidden">'
+        +'<div style="font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(x.name)+'</div>'
+        +'<div style="font-size:9px;color:var(--text3)">'+priceStr+'</div>'
       +'</div>'
-      +'<div style="font-size:10px;color:var(--text3)">$'+x.price.toFixed(2)+'</div>'
       +'<div class="badge '+(up?'up':'down')+'">'+chgStr+'</div>'
       +'</div>';
   }).join('');
@@ -2365,16 +2375,16 @@ function renderSectorPanel(){
     var up=s.avg>=0;
     var barW=Math.min(Math.abs(s.avg)*8,100);
     var barColor=up?'rgba(16,185,129,0.35)':'rgba(239,68,68,0.35)';
-    return '<div class="lb-row" onclick="filterGainers(null,\''+escH(s.sector)+'\')" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:3px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center">'
-        +'<span style="font-size:11px;font-weight:600;color:var(--text1)">'+escH(s.sector)+'</span>'
-        +'<div style="display:flex;align-items:center;gap:6px">'
-          +'<span style="font-size:9px;color:var(--text3)">'+s.pos+'↑ '+s.neg+'↓</span>'
+    return '<div style="display:block;padding:6px 13px;border-bottom:1px solid var(--border);cursor:pointer" onclick="filterGainers(null,\''+escH(s.sector)+'\')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px">'
+        +'<span style="font-size:11px;font-weight:600;color:var(--text1);min-width:0;overflow:hidden;text-overflow:ellipsis">'+escH(s.sector)+'</span>'
+        +'<div style="display:flex;align-items:center;gap:5px;flex-shrink:0">'
+          +'<span style="font-size:9px;color:var(--text3)">'+s.count+'&thinsp;stk</span>'
           +'<span class="badge '+(up?'up':'down')+'">'+(up?'+':'')+s.avg.toFixed(2)+'%</span>'
         +'</div>'
       +'</div>'
-      +'<div style="height:3px;border-radius:2px;background:var(--border);overflow:hidden">'
-        +'<div style="height:100%;width:'+barW+'%;background:'+barColor+';transition:width .3s"></div>'
+      +'<div style="height:3px;border-radius:2px;background:rgba(255,255,255,.07);margin-top:4px;overflow:hidden">'
+        +'<div style="height:100%;width:'+barW+'%;background:'+barColor+'"></div>'
       +'</div>'
       +'</div>';
   }).join('');
