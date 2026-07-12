@@ -396,7 +396,8 @@ nav button:hover{color:var(--text)}nav button.active{color:var(--accent);border-
       <button class="pp" onclick="filterGainers(this,'Financials')">Finance</button>
       <button class="pp" onclick="filterGainers(this,'AI & Data')">AI</button>
     </div>
-    <div id="gainers-status" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
+    <div id="gainers-status" style="font-size:11px;color:var(--text3);margin-bottom:6px"></div>
+    <div id="gainers-mkt-status" style="display:none;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:7px;padding:7px 12px;font-size:11px;color:var(--yellow);margin-bottom:8px">&#9888; Market closed or outside trading hours &mdash; showing last known prices</div>
     <div class="gainers-grid">
       <div class="lb" id="lb-gain"><div class="lb-hdr">&#129001; Top Gainers</div><div class="empty">Loading&hellip;</div></div>
       <div class="lb" id="lb-lose"><div class="lb-hdr">&#128997; Top Losers</div><div class="empty">Loading&hellip;</div></div>
@@ -2315,7 +2316,15 @@ async function loadTodayGainers(){
 function filterGainers(btn,sector){
   _gainersFilter=sector;
   document.querySelectorAll('#gainers-today .pp').forEach(function(b){b.classList.remove('active');});
-  if(btn)btn.classList.add('active');
+  if(btn){btn.classList.add('active');}
+  else{
+    // Try to highlight matching pill when called from sector panel
+    document.querySelectorAll('#gainers-today .pp').forEach(function(b){
+      var oc=b.getAttribute('onclick')||'';
+      if(oc.indexOf("'"+sector+"'")<0&&oc.indexOf('"'+sector+'"')<0)return;
+      b.classList.add('active');
+    });
+  }
   renderGainersWithFilter(sector);
 }
 function renderGainersWithFilter(sector){
@@ -2323,15 +2332,25 @@ function renderGainersWithFilter(sector){
     // fuzzy match: 'Cloud' matches 'Cloud & Software', 'Cloud & E-Com', 'Cloud'
     return x.sector===sector||x.sector.startsWith(sector);
   });
+  // Detect market closed: <20% of stocks have non-zero change
+  var nonZero=_gainersData.filter(function(x){return Math.abs(x.pct)>0.01;}).length;
+  var mktClosed=_gainersData.length>5&&nonZero<_gainersData.length*0.2;
+  var mktEl=document.getElementById('gainers-mkt-status');
+  if(mktEl)mktEl.style.display=mktClosed?'block':'none';
+  var suffix=sector!=='All'?' · '+sector:'';
   if(!data.length){
-    setLB('lb-gain','&#129001; Top Gainers','<div class="empty">No data for this sector</div>');
-    setLB('lb-lose','&#128997; Top Losers','<div class="empty">No data for this sector</div>');
+    setLB('lb-gain','&#129001; Top Gainers'+suffix,'<div class="empty">No data for this sector</div>');
+    setLB('lb-lose','&#128997; Top Losers'+suffix,'<div class="empty">No data for this sector</div>');
   } else {
     var sorted=data.slice().sort(function(a,b){return b.pct-a.pct;});
-    setLB('lb-gain','&#129001; Top Gainers'+(sector!=='All'?' · '+sector:''),'');
-    renderLBfinnhub('lb-gain',sorted.slice(0,10));
-    setLB('lb-lose','&#128997; Top Losers'+(sector!=='All'?' · '+sector:''),'');
-    renderLBfinnhub('lb-lose',sorted.slice(-10).reverse());
+    var gainers=sorted.filter(function(x){return x.pct>0.005;}).slice(0,10);
+    var losers=sorted.filter(function(x){return x.pct<-0.005;}).reverse().slice(0,10);
+    setLB('lb-gain','&#129001; Top Gainers'+suffix,'');
+    if(gainers.length){renderLBfinnhub('lb-gain',gainers);}
+    else{var ge=document.getElementById('lb-gain');var gh=ge&&ge.querySelector('.lb-hdr');if(ge)ge.innerHTML=(gh?gh.outerHTML:'')+'<div class="empty">'+(mktClosed?'Market closed':'No gainers today')+'</div>';}
+    setLB('lb-lose','&#128997; Top Losers'+suffix,'');
+    if(losers.length){renderLBfinnhub('lb-lose',losers);}
+    else{var le=document.getElementById('lb-lose');var lh=le&&le.querySelector('.lb-hdr');if(le)le.innerHTML=(lh?lh.outerHTML:'')+'<div class="empty">'+(mktClosed?'Market closed':'No losers today')+'</div>';}
   }
   // Sector performance always uses all data
   renderSectorPanel();
